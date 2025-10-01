@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:wstore/page/homepage.dart';
-import 'page/onboarding.dart';
 void main() {
   runApp(const MyApp());
 }
