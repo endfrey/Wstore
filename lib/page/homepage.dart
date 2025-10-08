@@ -10,10 +10,10 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   List categories = [
-    "images/headphone_icon.png",
-    "images/laptop.png",
-    "images/watch.png",
-    "images/TV.png",
+    "assets/images/headphone_icon.png",
+    "assets/images/laptop.png",
+    "assets/images/watch.png",
+    "assets/images/TV.png",
   ];
 
   @override
@@ -42,7 +42,7 @@ class _HomeState extends State<Home> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20.0),
                   child: Image.asset(
-                    "images/avatar.jpg",
+                    "assets/images/avatar.jpg",
                     height: 70,
                     width: 70,
                     fit: BoxFit.cover,
@@ -90,14 +90,14 @@ class _HomeState extends State<Home> {
                   padding: EdgeInsets.all(20.0),
                   margin: EdgeInsets.only(right: 20.0),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFFfd6f3e),
                     borderRadius: BorderRadius.circular(10.0),
                   ),
                   child: Center(
                     child: Text(
                       "All",
                       style: TextStyle(
-                        color: Color(0xFFFD6F3E),
+                        color: Colors.white,
                         fontSize: 20.0,
                         fontWeight: FontWeight.bold,
                       ),
@@ -105,7 +105,7 @@ class _HomeState extends State<Home> {
                   ),
                 ),
                 Expanded(
-                  child: Container(
+                  child: SizedBox(
                     height: 130,
                     child: ListView.builder(
                       padding: EdgeInsets.zero,
@@ -136,7 +136,7 @@ class _HomeState extends State<Home> {
               ],
             ),
             SizedBox(height: 20.0),
-            Container(
+            SizedBox(
               height: 240,
               child: ListView(
                 shrinkWrap: true,
@@ -152,15 +152,12 @@ class _HomeState extends State<Home> {
                     child: Column(
                       children: [
                         Image.asset(
-                          "images/headphone2.png",
+                          "assets/images/headphone2.png",
                           height: 150,
                           width: 150,
                           fit: BoxFit.cover,
                         ),
-                        Text(
-                          "Headphone",
-                          style: AppWidget.semiBoldTextStyle(),
-                        ),
+                        Text("Headphone", style: AppWidget.semiBoldTextStyle()),
                         SizedBox(height: 10.0),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -197,12 +194,15 @@ class _HomeState extends State<Home> {
                     child: Column(
                       children: [
                         Image.asset(
-                          "images/watch2.png",
+                          "assets/images/watch2.png",
                           height: 150,
                           width: 150,
                           fit: BoxFit.cover,
                         ),
-                        Text("Apple Watch", style: AppWidget.semiBoldTextStyle()),
+                        Text(
+                          "Apple Watch",
+                          style: AppWidget.semiBoldTextStyle(),
+                        ),
                         SizedBox(height: 10.0),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -238,7 +238,7 @@ class _HomeState extends State<Home> {
                     child: Column(
                       children: [
                         Image.asset(
-                          "images/laptop2.png",
+                          "assets/images/laptop2.png",
                           height: 150,
                           width: 150,
                           fit: BoxFit.cover,
