@@ -17,7 +17,9 @@ dependencies:
   random_string: ^2.3.1
   shared_preferences:
   image_picker: 
-  firebase_storage:  
+  firebase_storage:
+  flutter_stripe:
+  http:  
 
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1

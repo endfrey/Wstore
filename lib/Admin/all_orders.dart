@@ -1,29 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:wstore/services/database.dart';
-import 'package:wstore/services/shared_pref.dart';
 import 'package:wstore/widget/support_widget.dart';
 
-class Order extends StatefulWidget {
-  const Order({super.key});
+class AllOrders extends StatefulWidget {
+  const AllOrders({super.key});
 
   @override
-  State<Order> createState() => _OrderState();
+  State<AllOrders> createState() => _AllOrdersState();
 }
 
-class _OrderState extends State<Order> {
-  String? email;
-
-  getthesharedpref() async {
-    email = await SharedPreferenceHelper().getUserEmail();
-    setState(() {});
-  }
-
+class _AllOrdersState extends State<AllOrders> {
   Stream? orderStream;
 
   getontheload() async {
-    await getthesharedpref();
-    orderStream = await DatabaseMethods().getOrders(email!);
+    orderStream = await DatabaseMethods().allOrder();
     setState(() {});
   }
 
@@ -62,9 +54,10 @@ class _OrderState extends State<Order> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Image.network(
-                              ds["ProductImage"],
+                              ds["Image"],
                               height: 120,
                               width: 120,
                               fit: BoxFit.cover,
@@ -75,6 +68,20 @@ class _OrderState extends State<Order> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Text(
+                                    "Name :" + ds["Name"],
+                                    style: AppWidget.semiBoldTextStyle(),
+                                  ),
+                                  SizedBox(height: 3.0),
+                                  Container(
+                                    width:
+                                        MediaQuery.of(context).size.width / 2,
+                                    child: Text(
+                                      "Email :" + ds["Email"],
+                                      style: AppWidget.lightTextFieldStyle(),
+                                    ),
+                                  ),
+                                  SizedBox(height: 3.0),
                                   Text(
                                     ds["Product"],
                                     style: AppWidget.semiBoldTextStyle(),
@@ -87,14 +94,21 @@ class _OrderState extends State<Order> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  Text(
-                                    "Status : " + ds["Status"],
-                                    style: const TextStyle(
-                                      color: Color(0xFFfd6f3e),
-                                      fontSize: 18.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  SizedBox(height: 10.0),
+                                   GestureDetector(
+                                    onTap: ()async {
+                                      await DatabaseMethods().updateStatus(ds.id);
+                                      setState(() {
+                                        
+                                      });
+
+                                    },
+                                     child: Container(
+                                      padding: EdgeInsets.symmetric(vertical: 5.0),
+                                      decoration: BoxDecoration(color: Color(0xFFfd6f3e),borderRadius: BorderRadius.circular(10)),
+                                      child: Center(child: Text("Done",style: AppWidget.semiBoldTextStyle(),)),
+                                     ),
+                                   )
                                 ],
                               ),
                             ),
@@ -113,16 +127,11 @@ class _OrderState extends State<Order> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff2f2f2),
       appBar: AppBar(
-        backgroundColor: Color(0xfff2f2f2),
-        title: Center(
-          child: Text("Current Orders", style: AppWidget.boldTextStyle()),
-        ),
+        title: Text("All Orders", style: AppWidget.boldTextStyle()),
       ),
       body: Container(
         margin: EdgeInsets.only(left: 20.0, right: 20.0),
-        padding: EdgeInsets.only(top: 10.0, left: 20.0, bottom: 10.0),
         child: Column(children: [Expanded(child: allOrder())]),
       ),
     );

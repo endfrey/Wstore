@@ -40,7 +40,7 @@ class _SignUpState extends State<SignUp> {
         String Id = randomAlphaNumeric(10);
         await SharedPreferenceHelper().saveUserEmail(mailcontroller.text);
         await SharedPreferenceHelper().saveUserId(Id);
-        await SharedPreferenceHelper().saveUserEmail(namecontroller.text);
+        await SharedPreferenceHelper().saveUserName(namecontroller.text);
         await SharedPreferenceHelper().saveUserImage("https://t3.ftcdn.net/jpg/02/43/12/34/360_F_243123463_zTooub557xEWABDLk0jJklDyLSGl2jrr.jpg");
         
         Map<String, dynamic> userInfoMap = {
