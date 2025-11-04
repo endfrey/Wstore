@@ -16,9 +16,13 @@ class SignUp extends StatefulWidget {
 
 class _SignUpState extends State<SignUp> {
   String? name, email, password;
-  TextEditingController namecontroller = new TextEditingController();
-  TextEditingController mailcontroller = new TextEditingController();
-  TextEditingController passwordcontroller = new TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  TextEditingController namecontroller = TextEditingController();
+  TextEditingController mailcontroller = TextEditingController();
+  TextEditingController passwordcontroller = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
 
@@ -30,19 +34,21 @@ class _SignUpState extends State<SignUp> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.redAccent,
+            backgroundColor: Colors.green,
             content: Text(
               "Registered Successfully",
               style: TextStyle(fontSize: 20.0),
             ),
           ),
         );
+
         String Id = randomAlphaNumeric(10);
         await SharedPreferenceHelper().saveUserEmail(mailcontroller.text);
         await SharedPreferenceHelper().saveUserId(Id);
         await SharedPreferenceHelper().saveUserName(namecontroller.text);
-        await SharedPreferenceHelper().saveUserImage("https://t3.ftcdn.net/jpg/02/43/12/34/360_F_243123463_zTooub557xEWABDLk0jJklDyLSGl2jrr.jpg");
-        
+        await SharedPreferenceHelper().saveUserImage(
+            "https://t3.ftcdn.net/jpg/02/43/12/34/360_F_243123463_zTooub557xEWABDLk0jJklDyLSGl2jrr.jpg");
+
         Map<String, dynamic> userInfoMap = {
           "Name": namecontroller.text,
           "Email": mailcontroller.text,
@@ -50,7 +56,9 @@ class _SignUpState extends State<SignUp> {
           "Image":
               "https://t3.ftcdn.net/jpg/02/43/12/34/360_F_243123463_zTooub557xEWABDLk0jJklDyLSGl2jrr.jpg",
         };
+
         await DatabaseMethods().addUserDetails(userInfoMap, Id);
+
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => BottomNav()),
@@ -59,12 +67,13 @@ class _SignUpState extends State<SignUp> {
         if (e.code == 'weak-password') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              backgroundColor: const Color.fromARGB(255, 109, 235, 119),
+              backgroundColor: Colors.orangeAccent,
               content: Text(
                 "Password Provided is too Weak",
                 style: TextStyle(fontSize: 20.0),
               ),
-            ),);
+            ),
+          );
         } else if (e.code == "email-already-in-use") {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -103,11 +112,13 @@ class _SignUpState extends State<SignUp> {
                 SizedBox(height: 20.0),
                 Center(
                   child: Text(
-                    "Please Enter The Detail Below to\n                    Continue",
+                    "Please Enter The Details Below to\n                    Continue",
                     style: AppWidget.lightTextFieldStyle(),
                   ),
                 ),
                 SizedBox(height: 40.0),
+
+                /// Name
                 Text("Name", style: AppWidget.semiBoldTextStyle()),
                 SizedBox(height: 10.0),
                 Container(
@@ -121,7 +132,6 @@ class _SignUpState extends State<SignUp> {
                       if (value == null || value.isEmpty) {
                         return 'Please Enter Your Name';
                       }
-
                       return null;
                     },
                     controller: namecontroller,
@@ -132,6 +142,8 @@ class _SignUpState extends State<SignUp> {
                   ),
                 ),
                 SizedBox(height: 20.0),
+
+                /// Email
                 Text("Email", style: AppWidget.semiBoldTextStyle()),
                 SizedBox(height: 10.0),
                 Container(
@@ -145,7 +157,6 @@ class _SignUpState extends State<SignUp> {
                       if (value == null || value.isEmpty) {
                         return 'Please Enter Your Email';
                       }
-
                       return null;
                     },
                     controller: mailcontroller,
@@ -156,6 +167,8 @@ class _SignUpState extends State<SignUp> {
                   ),
                 ),
                 SizedBox(height: 20.0),
+
+                /// Password
                 Text("Password", style: AppWidget.semiBoldTextStyle()),
                 SizedBox(height: 10.0),
                 Container(
@@ -165,33 +178,91 @@ class _SignUpState extends State<SignUp> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: TextFormField(
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please Enter Your Password';
+                      } else if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
                       }
-
                       return null;
                     },
                     controller: passwordcontroller,
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       hintText: "Password",
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
                   ),
                 ),
+                SizedBox(height: 20.0),
 
+                /// Confirm Password
+                Text("Confirm Password",
+                    style: AppWidget.semiBoldTextStyle()),
+                SizedBox(height: 10.0),
+                Container(
+                  padding: EdgeInsets.only(left: 20.0),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFF4F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: TextFormField(
+                    obscureText: _obscureConfirmPassword,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please Confirm Your Password';
+                      } else if (value != passwordcontroller.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                    controller: confirmPasswordController,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: "Confirm Password",
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureConfirmPassword =
+                                !_obscureConfirmPassword;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
                 SizedBox(height: 30.0),
+
+                /// Sign Up Button
                 GestureDetector(
                   onTap: () {
                     if (_formkey.currentState!.validate()) {
                       setState(() {
-                        name = namecontroller.text;
-                        email = mailcontroller.text;
-                        password = passwordcontroller.text;
+                        name = namecontroller.text.trim();
+                        email = mailcontroller.text.trim();
+                        password = passwordcontroller.text.trim();
                       });
+                      registration();
                     }
-                    registration();
                   },
                   child: Center(
                     child: Container(
@@ -215,6 +286,8 @@ class _SignUpState extends State<SignUp> {
                   ),
                 ),
                 SizedBox(height: 20.0),
+
+                /// Go to Login
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

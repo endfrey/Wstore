@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:wstore/page/bottomnav.dart';
-import 'package:wstore/page/homepage.dart';
 import 'package:wstore/page/signup.dart';
 import 'package:wstore/widget/support_widget.dart';
 
@@ -15,9 +14,10 @@ class LogIn extends StatefulWidget {
 
 class _LogInState extends State<LogIn> {
   String email = "", password = "";
+  bool _obscurePassword = true; // 👈 ตัวแปรไว้ควบคุมการซ่อนรหัสผ่าน
 
-  TextEditingController mailcontroller = new TextEditingController();
-  TextEditingController passwordcontroller = new TextEditingController();
+  TextEditingController mailcontroller = TextEditingController();
+  TextEditingController passwordcontroller = TextEditingController();
 
   final _formkey = GlobalKey<FormState>();
 
@@ -28,7 +28,10 @@ class _LogInState extends State<LogIn> {
         password: password,
       );
 
-      Navigator.push(context, MaterialPageRoute(builder: (context) => BottomNav()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => BottomNav()),
+      );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -95,7 +98,6 @@ class _LogInState extends State<LogIn> {
                       if (value == null || value.isEmpty) {
                         return 'Please Enter Your Email';
                       }
-
                       return null;
                     },
                     controller: mailcontroller,
@@ -119,13 +121,26 @@ class _LogInState extends State<LogIn> {
                       if (value == null || value.isEmpty) {
                         return 'Please Enter Your Password';
                       }
-
                       return null;
                     },
                     controller: passwordcontroller,
+                    obscureText: _obscurePassword, // 👈 ซ่อนรหัสผ่าน
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       hintText: "Password",
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword; // 👈 toggle ซ่อน/แสดง
+                          });
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -145,14 +160,14 @@ class _LogInState extends State<LogIn> {
                 ),
                 SizedBox(height: 30.0),
                 GestureDetector(
-                  onTap: (){
-                    if(_formkey.currentState!.validate()){
+                  onTap: () {
+                    if (_formkey.currentState!.validate()) {
                       setState(() {
-                        email=mailcontroller.text;
-                        password=passwordcontroller.text;
+                        email = mailcontroller.text.trim();
+                        password = passwordcontroller.text.trim();
                       });
+                      userLogin();
                     }
-                    userLogin();
                   },
                   child: Center(
                     child: Container(
@@ -180,7 +195,7 @@ class _LogInState extends State<LogIn> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Dont have an account? ",
+                      "Don't have an account? ",
                       style: AppWidget.lightTextFieldStyle(),
                     ),
                     GestureDetector(
