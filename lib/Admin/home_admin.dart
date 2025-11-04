@@ -11,73 +11,101 @@ class HomeAdmin extends StatefulWidget {
 }
 
 class _HomeAdminState extends State<HomeAdmin> {
+  final Color seaBlue = const Color(0xFF1FB5FF);
+  final Color aquaBlue = const Color(0xFF00C2D1);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff2f2f2),
-      appBar: AppBar(
-        backgroundColor: Color(0xfff2f2f2),
-        title: Center(
-          child: Text("Home Admin", style: AppWidget.boldTextStyle()),
-        ),
+  body: Container(
+    width: double.infinity,      // ✅ เต็มความกว้าง
+    height: double.infinity,     // ✅ เต็มความสูง
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF7AD7F0),
+          Color(0xFF46C5D3),
+        ],
       ),
-      body: Container(
-        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-        child: Column(
-          children: [
-            SizedBox(height: 50.0),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context)=>AddProduct()));
-              },
-              child: Material(
-                elevation: 3.0,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: EdgeInsets.only(top: 10.0, bottom: 10.0),
-                  width: MediaQuery.of(context).size.width,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add, size: 50),
-                      SizedBox(width: 20.0),
-                      Text("Add Product", style: AppWidget.boldTextStyle()),
-                    ],
-                  ),
+    ),
+    child: SafeArea(             // ✅ ป้องกันล้ำขอบจอ
+      child: Column(
+        children: [
+          SizedBox(height: 40),
+          Text(
+            "Home Admin",
+            style: AppWidget.boldTextStyle().copyWith(
+              fontSize: 28,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 60),
+          menuButton(
+            icon: Icons.add,
+            text: "Add Product",
+            onTap: () {
+              Navigator.push(context,
+                MaterialPageRoute(builder: (context) => AddProduct()));
+            },
+          ),
+          SizedBox(height: 80),
+          menuButton(
+            icon: Icons.shopping_cart_outlined,
+            text: "All Orders",
+            onTap: () {
+              Navigator.push(context,
+                MaterialPageRoute(builder: (context) => AllOrders()));
+            },
+          ),
+        ],
+      ),
+    ),
+  ),
+);
+
+  }
+
+  // ✅ Widget ปุ่มเมนูสไตล์น้ำทะเล
+  Widget menuButton({required IconData icon, required String text, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          width: 300,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                offset: Offset(0, 3),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 40,
+                color: const Color(0xFF00B4D8), // ✅ ไอคอนสีฟ้าน้ำทะเล
+              ),
+              const SizedBox(width: 20),
+              Text(
+                text,
+                style: AppWidget.boldTextStyle().copyWith(
+                  fontSize: 20,
+                  color: Color(0xFF0077B6), // ฟ้าน้ำทะเลเข้ม
                 ),
               ),
-            ),
-            SizedBox(height: 80.0),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context)=>AllOrders()));
-              },
-              child: Material(
-                elevation: 3.0,
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: EdgeInsets.only(top: 10.0, bottom: 10.0),
-                  width: MediaQuery.of(context).size.width,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.shopping_cart_outlined, size: 50),
-                      SizedBox(width: 20.0),
-                      Text("All Orders", style: AppWidget.boldTextStyle()),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

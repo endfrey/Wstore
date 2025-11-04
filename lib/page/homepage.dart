@@ -1,11 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:wstore/page/category_product.dart';
 import 'package:wstore/page/product_detail.dart';
 import 'package:wstore/services/database.dart';
 import 'package:wstore/services/shared_pref.dart';
-import 'package:wstore/widget/support_widget.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -15,376 +13,354 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  bool search = false;
-  List categories = [
-    "assets/images/headphone_icon.png",
-    "assets/images/laptop.png",
-    "assets/images/watch.png",
-    "assets/images/TV.png",
-  ];
-
-  List Categoryname = ["Headphone", "Laptop", "Watch", "TV"];
-
-  var queryResultSet = [];
-  var tempSearchStore = [];
-  TextEditingController searchController = new TextEditingController();
-
-  initiateSearch(value) {
-    if (value.length == 0) {
-      setState(() {
-        queryResultSet = [];
-        tempSearchStore = [];
-      });
-    }
-    setState(() {
-      search = true;
-    });
-
-    var capitalizedValue =
-        value.substring(0, 1).toUpperCase() + value.substring(1);
-    if (queryResultSet.isEmpty && value.length == 1) {
-      DatabaseMethods().search(value).then((QuerySnapshot docs) {
-        for (int i = 0; i < docs.docs.length; ++i) {
-          queryResultSet.add(docs.docs[i].data());
-        }
-      });
-    } else {
-      tempSearchStore = [];
-      queryResultSet.forEach((element) {
-        if (element['UpdatedName'].startsWith(capitalizedValue)) {
-          setState(() {
-            tempSearchStore.add(element);
-          });
-        }
-      });
-    }
-  }
-
+  bool searching = false;
+  List queryResultSet = [];
+  List tempSearchStore = [];
+  TextEditingController searchController = TextEditingController();
   String? name, image;
 
-  getthesharedpref() async {
-    name = await SharedPreferenceHelper().getUserName();
-    image = await SharedPreferenceHelper().getUserImage();
+  final List categories = [
+    {"img": "assets/images/headphone_icon.png", "name": "Headphone"},
+    {"img": "assets/images/laptop.png", "name": "Laptop"},
+    {"img": "assets/images/watch.png", "name": "Watch"},
+    {"img": "assets/images/TV.png", "name": "TV"},
+  ];
 
-    // Debug log
-    print("DEBUG name = $name");
-    print("DEBUG image = $image");
+  void initiateSearch(String value) async {
+    if (value.isEmpty) {
+      setState(() {
+        searching = false;
+        tempSearchStore.clear();
+        queryResultSet.clear();
+      });
+      return;
+    }
 
-    setState(() {});
+    setState(() => searching = true);
+
+    var capitalized =
+        value.substring(0, 1).toUpperCase() + value.substring(1);
+    if (queryResultSet.isEmpty && value.length == 1) {
+      var result = await DatabaseMethods().search(capitalized);
+      setState(() {
+        queryResultSet = result.docs.map((e) => e.data()).toList();
+      });
+    } else {
+      tempSearchStore = queryResultSet
+          .where((element) =>
+              element['UpdatedName'].startsWith(capitalized))
+          .toList();
+      setState(() {});
+    }
   }
 
-  ontheload() async {
-    await getthesharedpref();
+  getUserData() async {
+    name = await SharedPreferenceHelper().getUserName();
+    image = await SharedPreferenceHelper().getUserImage();
+    setState(() {});
   }
 
   @override
   void initState() {
-    ontheload();
+    getUserData();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff2f2f2),
-      body: (name == null || name!.isEmpty)
-          ? Center(child: CircularProgressIndicator())
-          : Container(
-              margin: EdgeInsets.only(top: 50.0, left: 20.0, right: 20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Hey ${name ?? 'User'}",
-                            style: AppWidget.boldTextStyle(),
-                          ),
-                          Text(
-                            "Good Morning",
-                            style: AppWidget.lightTextFieldStyle(),
-                          ),
-                        ],
-                      ),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20.0),
-                        child: (image != null && image!.isNotEmpty)
-                            ? Image.network(
-                                image!,
-                                height: 70,
-                                width: 70,
-                                fit: BoxFit.cover,
-                              )
-                            : Container(
-                                height: 70,
-                                width: 70,
-                                color: Colors.grey[300],
-                                child: Icon(Icons.person, size: 40),
-                              ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 30.0),
-
-                  // Search box
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10.0),
-                    ),
-                    width: MediaQuery.of(context).size.width,
-                    child: TextField(
-                      controller: searchController,
-                      onChanged: (value) {
-                        initiateSearch(value.toLowerCase());
-                      },
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: "search Products",
-                        hintStyle: AppWidget.lightTextFieldStyle(),
-                        prefixIcon: search? GestureDetector(
-                          onTap: () {
-                            search = false;
-                            tempSearchStore = [];
-                            queryResultSet = [];
-                            searchController.text="";
-                            setState(() {
-                              
-                            });
-                          },
-                          child: Icon(Icons.close)): Icon(Icons.search, color: Colors.black),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 20.0),
-
-                  // Categories header
-                 search? ListView(
-                  padding: EdgeInsets.only(left: 10.0, right: 10.0),
-                  primary: false,
-                  shrinkWrap: true,
-                  children: tempSearchStore.map((element) {
-                    return buildResultCard(element);
-                  }).toList(),
-                 ): Column(
-                   children: [
-                     Padding(
-                        padding: const EdgeInsets.only(right: 20.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: const Color(0xFFF0F9FF),
+      body: SafeArea(
+        child: (name == null)
+            ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Categories", style: AppWidget.semiBoldTextStyle()),
-                            Text(
-                              " See All",
-                              style: TextStyle(
-                                color: Color(0xFFfd6f3e),
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            Text("Hey, ${name ?? 'User'} ",
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0C4A6E),
+                                )),
+                            const SizedBox(height: 4),
+                            const Text("Let’s find something cool today!",
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.black54)),
                           ],
                         ),
-                      ),
-                   
-                  SizedBox(height: 20.0),
-
-                  // Categories list
-                  Row(
-                    children: [
-                      Container(
-                        height: 130,
-                        padding: EdgeInsets.all(20.0),
-                        margin: EdgeInsets.only(right: 20.0),
-                        decoration: BoxDecoration(
-                          color: Color(0xFFfd6f3e),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: Center(
-                          child: Text(
-                            "All",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: SizedBox(
-                          height: 130,
-                          child: ListView.builder(
-                            padding: EdgeInsets.zero,
-                            itemCount: categories.length,
-                            shrinkWrap: true,
-                            scrollDirection: Axis.horizontal,
-                            itemBuilder: (context, index) {
-                              return CategoryTile(
-                                image: categories[index],
-                                name: Categoryname[index],
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20.0),
-
-                  // All Products header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "All Products",
-                        style: AppWidget.semiBoldTextStyle(),
-                      ),
-                      Text(
-                        " See All",
-                        style: TextStyle(
-                          color: Color(0xFFfd6f3e),
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20.0),
-
-                  // All Products list
-                  SizedBox(
-                    height: 240,
-                    child: ListView(
-                      shrinkWrap: true,
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        productCard(
-                          "assets/images/headphone2.png",
-                          "Headphone",
-                          "\$100",
-                        ),
-                        productCard(
-                          "assets/images/watch2.png",
-                          "Apple Watch",
-                          "\$300",
-                        ),
-                        productCard(
-                          "assets/images/laptop2.png",
-                          "Laptop",
-                          "\$1000",
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: (image != null && image!.isNotEmpty)
+                              ? Image.network(image!,
+                                  height: 55, width: 55, fit: BoxFit.cover)
+                              : Container(
+                                  height: 55,
+                                  width: 55,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF38BDF8),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: const Icon(Icons.person,
+                                      color: Colors.white, size: 30),
+                                ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 25),
+
+                    // Search bar
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.shade100.withOpacity(0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: searchController,
+                        onChanged: initiateSearch,
+                        decoration: InputDecoration(
+                          hintText: "Search product...",
+                          hintStyle: const TextStyle(color: Colors.grey),
+                          border: InputBorder.none,
+                          prefixIcon: const Icon(Icons.search,
+                              color: Color(0xFF38BDF8)),
+                          suffixIcon: searching
+                              ? IconButton(
+                                  icon: const Icon(Icons.close,
+                                      color: Color(0xFF38BDF8)),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    searching = false;
+                                    tempSearchStore.clear();
+                                    queryResultSet.clear();
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    // Search results or normal content
+                    if (searching)
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: tempSearchStore.length,
+                        itemBuilder: (context, index) =>
+                            buildResultCard(tempSearchStore[index]),
+                      )
+                    else ...[
+                      sectionHeader("Categories"),
+                      const SizedBox(height: 12),
+                      buildCategoryList(),
+                      const SizedBox(height: 25),
+                      sectionHeader("Popular Products"),
+                      const SizedBox(height: 12),
+                      buildProductList(),
+                    ],
+                  ],
+                ),
               ),
-              ],
-                 ),
-            ),
-    );
-  }
-  Widget buildResultCard(data){
-    return GestureDetector(
-      onTap: (){
-        Navigator.push(context, MaterialPageRoute(builder: (context)=>ProductDetail(image: data["Image"], name: data["Name"], price: data["Price"], detail: data["Detail"],)));
-      },
-      child: Container(
-        padding: EdgeInsets.only(left: 20.0),
-        width: MediaQuery.of(context).size.width,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10.0),
-          
-        ),
-        height: 100,
-        child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10.0),
-            child: Image.network(data['Image'],height: 70,width: 70,fit: BoxFit.cover,)),
-          SizedBox(width: 20.0),
-          Text( data['Name'],style: AppWidget.semiBoldTextStyle(),)
-        ],),
       ),
     );
   }
 
-  Widget productCard(String img, String title, String price) {
+  Widget sectionHeader(String text) => Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFF0C4A6E),
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+
+  Widget buildCategoryList() {
+    return SizedBox(
+      height: 110,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => CategoryProduct(category: cat["name"])),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              width: 100,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFBAE6FD), Color(0xFF7DD3FC)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.blue.shade100.withOpacity(0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4))
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(cat["img"], height: 50, width: 50),
+                  const SizedBox(height: 8),
+                  Text(cat["name"],
+                      style: const TextStyle(
+                          color: Color(0xFF0C4A6E),
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildProductList() {
+    final products = [
+      ["assets/images/headphone2.png", "Headphone", "1000"],
+      ["assets/images/watch2.png", "Smart Watch", "3000"],
+      ["assets/images/laptop2.png", "Laptop", "25000"],
+    ];
+
+    return SizedBox(
+      height: 270,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: products.length,
+        itemBuilder: (context, i) {
+          return buildProductCard(products[i][0], products[i][1], products[i][2]);
+        },
+      ),
+    );
+  }
+
+  Widget buildProductCard(String img, String title, String price) {
     return Container(
-      margin: EdgeInsets.only(right: 20.0),
-      padding: EdgeInsets.symmetric(horizontal: 20.0),
+      margin: const EdgeInsets.only(right: 18),
+      width: 180,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade100.withOpacity(0.5),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(img, height: 150, width: 150, fit: BoxFit.cover),
-          Text(title, style: AppWidget.semiBoldTextStyle()),
-          SizedBox(height: 10.0),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                price,
-                style: TextStyle(
-                  color: Color(0xFFfd6f3e),
-                  fontSize: 22.0,
-                  fontWeight: FontWeight.bold,
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(18)),
+            child: Image.asset(img,
+                height: 130, width: double.infinity, fit: BoxFit.cover),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Color(0xFF0C4A6E))),
+                const SizedBox(height: 4),
+                Text("฿$price",
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0284C7))),
+                const SizedBox(height: 6),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF38BDF8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {},
+                  child: const Text("Add to Cart",
+                      style: TextStyle(color: Colors.white)),
                 ),
-              ),
-              SizedBox(width: 40.0),
-              Container(
-                padding: EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(7.0),
-                  color: Color(0xFFfd6f3e),
-                ),
-                child: Icon(Icons.add, color: Colors.white),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
-}
 
-class CategoryTile extends StatelessWidget {
-  String image, name;
-  CategoryTile({super.key, required this.image, required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CategoryProduct(category: name),
+  Widget buildResultCard(data) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade100.withOpacity(0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-        );
-      },
-      child: Container(
-        padding: EdgeInsets.all(20.0),
-        margin: EdgeInsets.only(right: 20.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        height: 90,
-        width: 90,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Image.asset(image, height: 50, width: 50, fit: BoxFit.cover),
-            Icon(Icons.arrow_forward),
-          ],
-        ),
+        ],
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              data['Image'],
+              height: 70,
+              width: 70,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Text(
+              data['Name'],
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0C4A6E)),
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios,
+              size: 16, color: Colors.blue.shade400),
+        ],
       ),
     );
   }

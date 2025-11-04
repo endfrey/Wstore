@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'WStore',
       theme: ThemeData(primarySwatch: Colors.green),
-      home: LogIn(),
+      home: BottomNav(),
     );
   }
 }

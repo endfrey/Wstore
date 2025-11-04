@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:wstore/services/database.dart';
 import 'package:wstore/widget/support_widget.dart';
 
@@ -32,94 +31,125 @@ class _AllOrdersState extends State<AllOrders> {
         return snapshot.hasData
             ? ListView.builder(
                 padding: EdgeInsets.zero,
-
                 itemCount: snapshot.data.docs.length,
                 itemBuilder: (context, index) {
                   DocumentSnapshot ds = snapshot.data.docs[index];
 
                   return Container(
-                    margin: EdgeInsets.only(bottom: 20.0),
+                    margin: const EdgeInsets.only(bottom: 20),
                     child: Material(
-                      elevation: 3.0,
-                      borderRadius: BorderRadius.circular(10),
+                      elevation: 6,
+                      borderRadius: BorderRadius.circular(18),
                       child: Container(
-                        padding: EdgeInsets.only(
-                          left: 20.0,
-                          top: 10.0,
-                          bottom: 10.0,
-                        ),
-                        width: MediaQuery.of(context).size.width,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Image.network(
-                              ds["Image"],
-                              height: 120,
-                              width: 120,
-                              fit: BoxFit.cover,
-                            ),
-                            Spacer(),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 10.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Name :" + ds["Name"],
-                                    style: AppWidget.semiBoldTextStyle(),
-                                  ),
-                                  SizedBox(height: 3.0),
-                                  Container(
-                                    width:
-                                        MediaQuery.of(context).size.width / 2,
-                                    child: Text(
-                                      "Email :" + ds["Email"],
-                                      style: AppWidget.lightTextFieldStyle(),
-                                    ),
-                                  ),
-                                  SizedBox(height: 3.0),
-                                  Text(
-                                    ds["Product"],
-                                    style: AppWidget.semiBoldTextStyle(),
-                                  ),
-                                  Text(
-                                    "\$" + ds["Price"],
-                                    style: const TextStyle(
-                                      color: Color(0xFFfd6f3e),
-                                      fontSize: 23.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 10.0),
-                                   GestureDetector(
-                                    onTap: ()async {
-                                      await DatabaseMethods().updateStatus(ds.id);
-                                      setState(() {
-                                        
-                                      });
-
-                                    },
-                                     child: Container(
-                                      padding: EdgeInsets.symmetric(vertical: 5.0),
-                                      decoration: BoxDecoration(color: Color(0xFFfd6f3e),borderRadius: BorderRadius.circular(10)),
-                                      child: Center(child: Text("Done",style: AppWidget.semiBoldTextStyle(),)),
-                                     ),
-                                   )
-                                ],
-                              ),
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: Offset(0, 3),
                             ),
                           ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: Image.network(
+                                  ds["Image"],
+                                  height: 120,
+                                  width: 120,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+
+                              const SizedBox(width: 12),
+
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Name: ${ds["Name"]}",
+                                      style: AppWidget.semiBoldTextStyle(),
+                                    ),
+
+                                    const SizedBox(height: 4),
+
+                                    Text(
+                                      "Email: ${ds["Email"]}",
+                                      style: AppWidget.lightTextFieldStyle(),
+                                    ),
+
+                                    const SizedBox(height: 4),
+
+                                    Text(
+                                      ds["Product"],
+                                      style: AppWidget.semiBoldTextStyle(),
+                                    ),
+
+                                    const SizedBox(height: 6),
+
+                                    Text(
+                                      "\$${ds["Price"]}",
+                                      style: const TextStyle(
+                                        color: Color(0xFF0096C7),
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    GestureDetector(
+                                      onTap: () async {
+                                        await DatabaseMethods().updateStatus(
+                                          ds.id,
+                                        );
+                                        setState(() {});
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 6,
+                                          horizontal: 14,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF00B4D8),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Colors.black12,
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          "Done",
+                                          style: AppWidget.semiBoldTextStyle()
+                                              .copyWith(color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   );
                 },
               )
-            : Container();
+            : const Center(
+                child: CircularProgressIndicator(color: Color(0xFF0096C7)),
+              );
       },
     );
   }
@@ -127,12 +157,48 @@ class _AllOrdersState extends State<AllOrders> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("All Orders", style: AppWidget.boldTextStyle()),
-      ),
+      // ✅ พื้นหลัง Gradient เหมือนหน้าอื่น
       body: Container(
-        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-        child: Column(children: [Expanded(child: allOrder())]),
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF7AD7F0), Color(0xFF46C5D3)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ✅ AppBar แบบ Custom
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  "All Orders",
+                  style: AppWidget.boldTextStyle().copyWith(
+                    fontSize: 26,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black26,
+                        offset: Offset(1, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: allOrder(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

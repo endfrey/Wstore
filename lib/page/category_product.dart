@@ -5,95 +5,124 @@ import 'package:wstore/services/database.dart';
 import '../widget/support_widget.dart';
 
 class CategoryProduct extends StatefulWidget {
-  String category;
-  CategoryProduct({required this.category});
+  final String category;
+  const CategoryProduct({required this.category, super.key});
 
   @override
   State<CategoryProduct> createState() => _CategoryProductState();
 }
 
 class _CategoryProductState extends State<CategoryProduct> {
-  Stream? CategoryStream;
+  Stream? categoryStream;
 
-  getontheload() async {
-    CategoryStream = await DatabaseMethods().getProducts(widget.category);
+  getData() async {
+    categoryStream = await DatabaseMethods().getProducts(widget.category);
     setState(() {});
   }
 
   @override
   void initState() {
-    getontheload();
+    getData();
     super.initState();
   }
 
   Widget allProduct() {
     return StreamBuilder(
-      stream: CategoryStream,
+      stream: categoryStream,
       builder: (context, AsyncSnapshot snapshot) {
-        return snapshot.hasData
-            ? GridView.builder(
-                padding: EdgeInsets.zero,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.6,
-                  mainAxisSpacing: 10.0,
-                  crossAxisSpacing: 10.0,
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.65,
+            mainAxisSpacing: 12.0,
+            crossAxisSpacing: 12.0,
+          ),
+          itemCount: snapshot.data.docs.length,
+          itemBuilder: (context, index) {
+            DocumentSnapshot ds = snapshot.data.docs[index];
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProductDetail(
+                      image: ds["Image"],
+                      name: ds["Name"],
+                      price: ds["Price"],
+                      detail: ds["Detail"],
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blueAccent.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                itemCount: snapshot.data.docs.length,
-                itemBuilder: (context, index) {
-                  DocumentSnapshot ds = snapshot.data.docs[index];
-
-                  return Container(
-                    padding: EdgeInsets.symmetric(horizontal: 20.0,vertical: 10.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        ds["Image"],
+                        height: 150,
+                        width: 150,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                    child: Column(
-                      children: [
-                        SizedBox(height: 10.0),
-                        Image.network(
-                          ds["Image"],
-                          height: 150,
-                          width: 150,
-                          fit: BoxFit.cover,
-                        ),
-                        SizedBox(height: 10.0),
-                        Text(ds["Name"], style: AppWidget.semiBoldTextStyle()),
-                        Spacer(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "\$" + ds["Price"],
-                              style: TextStyle(
-                                color: Color(0xFFfd6f3e),
-                                fontSize: 22.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(width: 30.0),
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context)=> ProductDetail(image: ds["Image"], name: ds["Name"], price: ds["Price"], detail: ds["Detail"],)));
-                              },
-                              child: Container(
-                                padding: EdgeInsets.all(5),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(7.0),
-                                  color: Color(0xFFfd6f3e),
-                                ),
-                                child: Icon(Icons.add, color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    const SizedBox(height: 10),
+                    Text(
+                      ds["Name"],
+                      style: AppWidget.semiBoldTextStyle().copyWith(
+                        color: Colors.black87,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  );
-                },
-              )
-            : Container();
+                    const Spacer(),
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "\$${ds["Price"]}",
+                            style: const TextStyle(
+                              color: Color(0xFF008CFF),
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2196F3),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.add, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
       },
     );
   }
@@ -101,11 +130,25 @@ class _CategoryProductState extends State<CategoryProduct> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff2f2f2),
-      appBar: AppBar(backgroundColor: Color(0xfff2f2f2)),
+      backgroundColor: const Color(0xFFEFF7FF),
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          widget.category,
+          style: AppWidget.boldTextStyle().copyWith(color: Colors.black87),
+        ),
+        backgroundColor: const Color(0xFFEFF7FF),
+        iconTheme: const IconThemeData(color: Colors.black87),
+      ),
       body: Container(
-        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-        child: Column(children: [Expanded(child: allProduct())]),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Expanded(child: allProduct()),
+          ],
+        ),
       ),
     );
   }

@@ -3,13 +3,12 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:wstore/services/constant.dart';
 import 'package:wstore/services/database.dart';
 import 'package:wstore/services/shared_pref.dart';
-import 'package:wstore/widget/support_widget.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ProductDetail extends StatefulWidget {
   final String image, name, price, detail;
-  ProductDetail({
+  const ProductDetail({
     required this.image,
     required this.name,
     required this.price,
@@ -21,124 +20,172 @@ class ProductDetail extends StatefulWidget {
 }
 
 class _ProductDetailState extends State<ProductDetail> {
+  String? name, mail, image;
+  Map<String, dynamic>? paymentIntent;
 
-  String? name, mail,image;
-
-  getthesharedpref()async{
+  getSharedPref() async {
     name = await SharedPreferenceHelper().getUserName();
     mail = await SharedPreferenceHelper().getUserEmail();
     image = await SharedPreferenceHelper().getUserImage();
-    setState(() {
-
-    });
-  }
-  ontheload()async{
-    await getthesharedpref();
-    setState(() {
-      
-    });
+    setState(() {});
   }
 
   @override
-    void initState() {
+  void initState() {
     super.initState();
-    ontheload();
+    getSharedPref();
   }
 
-  Map<String, dynamic>? paymentIntent;
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFfef5f1),
-      body: Container(
-        padding: const EdgeInsets.only(top: 50),
+      backgroundColor: const Color(0xFFF0F9FF), // ฟ้าอ่อน
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(left: 20.0),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      border: Border.all(),
-                      borderRadius: BorderRadius.circular(30),
+            // 🔹 Header with Back Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.shade100.withOpacity(0.5),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          )
+                        ],
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          color: Color(0xFF0C4A6E), size: 20),
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new_outlined),
                   ),
-                ),
-                Center(child: Image.network(widget.image, height: 320)),
-              ],
+                ],
+              ),
             ),
+
+            // 🔹 Product Image
+            Hero(
+              tag: widget.image,
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                height: 280,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.shade100.withOpacity(0.4),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(widget.image, fit: BoxFit.contain),
+                ),
+              ),
+            ),
+
+            // 🔹 Product Detail Section
             Expanded(
               child: Container(
-                padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20)),
+                  borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFFE0F2FE),
+                      blurRadius: 20,
+                      offset: Offset(0, -2),
+                    ),
+                  ],
                 ),
-                width: MediaQuery.of(context).size.width,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 🔸 Name & Price
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(widget.name, style: AppWidget.boldTextStyle()),
+                        Expanded(
+                          child: Text(
+                            widget.name,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0C4A6E),
+                            ),
+                          ),
+                        ),
                         Text(
-                          "\$" + widget.price,
+                          "฿${widget.price}",
                           style: const TextStyle(
-                            color: Color(0xFFfd6f3e),
-                            fontSize: 23.0,
-                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0284C7),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 5.0),
-                    Text("Details", style: AppWidget.semiBoldTextStyle()),
-                    const SizedBox(height: 10.0),
+
+                    const SizedBox(height: 12),
+
+                    const Text(
+                      "Details",
+                      style: TextStyle(
+                        color: Color(0xFF0C4A6E),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Text(
                       widget.detail,
                       style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16.0,
+                        color: Colors.black54,
+                        fontSize: 15,
+                        height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 40.0),
-                    GestureDetector(
-                      onTap: () async {
-                        await makePayment(widget.price);
-                      },
-                      child: GestureDetector(
-                        onTap: () {
-                          makePayment(widget.price);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10.0),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFfd6f3e),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          width: MediaQuery.of(context).size.width,
-                          child: const Center(
-                            child: Text(
-                              "Buy Now",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+
+                    const Spacer(),
+
+                    // 🔹 Buy Now Button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF38BDF8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 4,
+                        shadowColor: Colors.blue.shade200,
+                      ),
+                      onPressed: () => makePayment(widget.price),
+                      child: const Center(
+                        child: Text(
+                          "Buy Now",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),
@@ -149,17 +196,17 @@ class _ProductDetailState extends State<ProductDetail> {
     );
   }
 
+  // 🔹 Stripe Payment Integration
   Future<void> makePayment(String amount) async {
     try {
       paymentIntent = await createPaymentIntent(amount, 'USD');
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: paymentIntent?['client_secret'],
-          style: ThemeMode.dark,
+          style: ThemeMode.light,
           merchantDisplayName: 'WStore',
         ),
       );
-
       await displayPaymentSheet();
     } catch (e, s) {
       print('exception: $e $s');
@@ -168,49 +215,42 @@ class _ProductDetailState extends State<ProductDetail> {
 
   displayPaymentSheet() async {
     try {
-      await Stripe.instance
-          .presentPaymentSheet()
-          .then((value) async {
-            Map<String, dynamic> orderInfoMap = {
-              "Product": widget.name,
-              "Price": widget.price,
-              "Name": name,
-              "Email": mail,
-              "Image": image,
-              "ProductImage": widget.image,
-              "Status": "On the way"
-            };
-            await DatabaseMethods().orderDetails(orderInfoMap);
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: const [
-                        Icon(Icons.check_circle, color: Colors.green),
-                        SizedBox(width: 10),
-                        Text("Payment Successful"),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-            paymentIntent = null;
-          })
-          .onError((error, stackTrace) {
-            print('Exception/DISPLAYPAYMENTSHEET==> $error $stackTrace');
-          });
-    } on StripeException catch (e) {
-      print('Exception/DISPLAYPAYMENTSHEET==> $e');
+      await Stripe.instance.presentPaymentSheet().then((value) async {
+        Map<String, dynamic> orderInfoMap = {
+          "Product": widget.name,
+          "Price": widget.price,
+          "Name": name,
+          "Email": mail,
+          "Image": image,
+          "ProductImage": widget.image,
+          "Status": "On the way"
+        };
+        await DatabaseMethods().orderDetails(orderInfoMap);
+
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.check_circle, color: Colors.green, size: 48),
+                SizedBox(height: 12),
+                Text("Payment Successful",
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        );
+        paymentIntent = null;
+      });
+    } on StripeException {
       showDialog(
         context: context,
-        builder: (_) => const AlertDialog(content: Text("Cancelled ")),
+        builder: (_) => const AlertDialog(content: Text("Payment Cancelled")),
       );
-    } catch (e) {
-      print('$e');
     }
   }
 

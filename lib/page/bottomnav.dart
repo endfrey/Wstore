@@ -12,42 +12,90 @@ class BottomNav extends StatefulWidget {
 }
 
 class _BottomNavState extends State<BottomNav> {
-  late List<Widget> pages;
-
-  late Home HomePage;
-  late Profile ProfilePage;
-  late Order OrderPage;
-  int currentTabIndex = 0;
+  late final List<Widget> _pages;
+  int _currentIndex = 0;
 
   @override
   void initState() {
-    HomePage = Home();
-    ProfilePage = Profile();
-    OrderPage = Order();
-    pages = [HomePage, OrderPage, ProfilePage];
+    _pages = const [
+      Home(),
+      Order(),
+      Profile(),
+    ];
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: CurvedNavigationBar(
-        height: 65,
-        backgroundColor: Color(0xfff2f2f2),
-        color: Colors.black,
-        animationDuration: Duration(milliseconds: 500),
-        onTap: (int index) {
-          setState(() {
-            currentTabIndex = index;
-          });
-        },
-        items: [
-          Icon(Icons.home_outlined, color: Colors.white),
-          Icon(Icons.shopping_cart_outlined, color: Colors.white),
-          Icon(Icons.person_outline, color: Colors.white),
-        ],
+      extendBody: true,
+      backgroundColor: const Color(0xFFF0F9FF), // ฟ้าขาวนวล
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF38BDF8), Color(0xFFA5D8FF)], // ฟ้า-น้ำทะเล
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(25),
+            topRight: Radius.circular(25),
+          ),
+        ),
+        child: CurvedNavigationBar(
+          height: 65,
+          color: Colors.transparent,
+          backgroundColor: Colors.transparent,
+          buttonBackgroundColor: Colors.white,
+          animationDuration: const Duration(milliseconds: 400),
+          animationCurve: Curves.easeInOutCubic,
+          index: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          items: [
+            Icon(
+              Icons.home_outlined,
+              color:
+                  _currentIndex == 0 ? const Color(0xFF0EA5E9) : Colors.white,
+              size: 30,
+            ),
+            Icon(
+              Icons.shopping_cart_outlined,
+              color:
+                  _currentIndex == 1 ? const Color(0xFF0EA5E9) : Colors.white,
+              size: 30,
+            ),
+            Icon(
+              Icons.person_outline,
+              color:
+                  _currentIndex == 2 ? const Color(0xFF0EA5E9) : Colors.white,
+              size: 30,
+            ),
+          ],
+        ),
       ),
-      body: pages[currentTabIndex],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeInOutCubic,
+        switchOutCurve: Curves.easeInOutCubic,
+        transitionBuilder: (child, animation) => SlideTransition(
+          position:
+              Tween<Offset>(begin: const Offset(0.1, 0), end: Offset.zero)
+                  .animate(animation),
+          child: FadeTransition(opacity: animation, child: child),
+        ),
+        child: _pages[_currentIndex],
+      ),
     );
   }
 }

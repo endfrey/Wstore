@@ -13,23 +13,22 @@ class Order extends StatefulWidget {
 
 class _OrderState extends State<Order> {
   String? email;
+  Stream? orderStream;
 
-  getthesharedpref() async {
+  getSharedPref() async {
     email = await SharedPreferenceHelper().getUserEmail();
     setState(() {});
   }
 
-  Stream? orderStream;
-
-  getontheload() async {
-    await getthesharedpref();
+  getOnLoad() async {
+    await getSharedPref();
     orderStream = await DatabaseMethods().getOrders(email!);
     setState(() {});
   }
 
   @override
   void initState() {
-    getontheload();
+    getOnLoad();
     super.initState();
   }
 
@@ -37,75 +36,113 @@ class _OrderState extends State<Order> {
     return StreamBuilder(
       stream: orderStream,
       builder: (context, AsyncSnapshot snapshot) {
-        return snapshot.hasData
-            ? ListView.builder(
-                padding: EdgeInsets.zero,
+        if (!snapshot.hasData) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF5CB8E4)),
+          );
+        }
 
-                itemCount: snapshot.data.docs.length,
-                itemBuilder: (context, index) {
-                  DocumentSnapshot ds = snapshot.data.docs[index];
+        if (snapshot.data.docs.isEmpty) {
+          return const Center(
+            child: Text(
+              "No orders yet",
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          );
+        }
 
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 20.0),
-                    child: Material(
-                      elevation: 3.0,
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: EdgeInsets.only(
-                          left: 20.0,
-                          top: 10.0,
-                          bottom: 10.0,
-                        ),
-                        width: MediaQuery.of(context).size.width,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Image.network(
-                              ds["ProductImage"],
-                              height: 120,
-                              width: 120,
-                              fit: BoxFit.cover,
+        return ListView.builder(
+          padding: EdgeInsets.zero,
+          itemCount: snapshot.data.docs.length,
+          itemBuilder: (context, index) {
+            DocumentSnapshot ds = snapshot.data.docs[index];
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.1),
+                    spreadRadius: 2,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(18),
+                      bottomLeft: Radius.circular(18),
+                    ),
+                    child: Image.network(
+                      ds["ProductImage"],
+                      height: 120,
+                      width: 120,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ds["Product"],
+                            style: AppWidget.semiBoldTextStyle().copyWith(
+                              fontSize: 18,
+                              color: Colors.blueGrey[800],
                             ),
-                            Spacer(),
-                            Padding(
-                              padding: const EdgeInsets.only(right: 10.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    ds["Product"],
-                                    style: AppWidget.semiBoldTextStyle(),
-                                  ),
-                                  Text(
-                                    "\$" + ds["Price"],
-                                    style: const TextStyle(
-                                      color: Color(0xFFfd6f3e),
-                                      fontSize: 23.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Status : " + ds["Status"],
-                                    style: const TextStyle(
-                                      color: Color(0xFFfd6f3e),
-                                      fontSize: 18.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.attach_money,
+                                  color: Color(0xFF5CB8E4), size: 22),
+                              Text(
+                                ds["Price"],
+                                style: const TextStyle(
+                                  color: Color(0xFF5CB8E4),
+                                  fontSize: 20.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(Icons.local_shipping_outlined,
+                                  color: Color(0xFF0096C7), size: 20),
+                              const SizedBox(width: 4),
+                              Text(
+                                "Status: ${ds["Status"]}",
+                                style: TextStyle(
+                                  color: ds["Status"] == "Delivered"
+                                      ? Colors.green[600]
+                                      : Colors.orange[600],
+                                  fontSize: 16.0,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
-              )
-            : Container();
+                  ),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }
@@ -113,17 +150,19 @@ class _OrderState extends State<Order> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff2f2f2),
+      backgroundColor: const Color(0xFFE3F2FD),
       appBar: AppBar(
-        backgroundColor: Color(0xfff2f2f2),
-        title: Center(
-          child: Text("Current Orders", style: AppWidget.boldTextStyle()),
+        backgroundColor: const Color(0xFF90CAF9),
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          "My Orders",
+          style: AppWidget.boldTextStyle().copyWith(color: Colors.white),
         ),
       ),
       body: Container(
-        margin: EdgeInsets.only(left: 20.0, right: 20.0),
-        padding: EdgeInsets.only(top: 10.0, left: 20.0, bottom: 10.0),
-        child: Column(children: [Expanded(child: allOrder())]),
+        margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+        child: allOrder(),
       ),
     );
   }

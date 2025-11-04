@@ -34,6 +34,12 @@ class DatabaseMethods {
     return await FirebaseFirestore.instance.collection(category).snapshots();
   }
 
+  Future<Stream<QuerySnapshot>> getAllProducts() async {
+    return await FirebaseFirestore.instance
+        .collection("Products")
+        .snapshots();
+  }
+
   Future<Stream<QuerySnapshot>> allOrder() async {
     return await FirebaseFirestore.instance
         .collection("Orders")
@@ -54,7 +60,11 @@ class DatabaseMethods {
         .add(userInfoMap);
   }
 
-  Future<QuerySnapshot> search(String updatename)async {
-    return await FirebaseFirestore.instance.collection("Products").where("SearchKey",isEqualTo: updatename.substring(0,1).toUpperCase()).get();
+  Future<QuerySnapshot> search(String updatename) async {
+    return await FirebaseFirestore.instance
+        .collection("Products")
+        .where("SearchKey",
+            isEqualTo: updatename.substring(0, 1).toUpperCase())
+        .get();
   }
 }
