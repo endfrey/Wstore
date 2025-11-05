@@ -1,154 +1,118 @@
+// lib/page/category_product.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:wstore/page/product_detail.dart';
-import 'package:wstore/services/database.dart';
-import '../widget/support_widget.dart';
 
-class CategoryProduct extends StatefulWidget {
+class CategoryProduct extends StatelessWidget {
   final String category;
-  const CategoryProduct({required this.category, super.key});
+  const CategoryProduct({Key? key, required this.category}) : super(key: key);
 
-  @override
-  State<CategoryProduct> createState() => _CategoryProductState();
-}
+  Widget buildProductCard(BuildContext context, Map<String, dynamic> p, String id) {
+    // ✅ ดึงรูปหลายรูป (images) จาก Firestore
+    final List<String> images =
+        (p['images'] != null && p['images'] is List)
+            ? List<String>.from(p['images'])
+            : (p['Image'] != null ? [p['Image']] : []);
 
-class _CategoryProductState extends State<CategoryProduct> {
-  Stream? categoryStream;
+    final variants = (p['variants'] is List)
+        ? List<Map<String, dynamic>>.from(p['variants'])
+        : null;
 
-  getData() async {
-    categoryStream = await DatabaseMethods().getProducts(widget.category);
-    setState(() {});
-  }
+    final firstImg = images.isNotEmpty ? images[0] : "";
+    final name = p['Name'] ?? '';
+    final price = p['Price']?.toString() ?? '';
 
-  @override
-  void initState() {
-    getData();
-    super.initState();
-  }
-
-  Widget allProduct() {
-    return StreamBuilder(
-      stream: categoryStream,
-      builder: (context, AsyncSnapshot snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        return GridView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.65,
-            mainAxisSpacing: 12.0,
-            crossAxisSpacing: 12.0,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductDetail(
+              image: firstImg,
+              name: name,
+              price: price,
+              detail: p['Detail'] ?? '',
+              productId: id,
+              storeId: p['storeId'],
+              variants: variants,
+            ),
           ),
-          itemCount: snapshot.data.docs.length,
-          itemBuilder: (context, index) {
-            DocumentSnapshot ds = snapshot.data.docs[index];
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductDetail(
-                      image: ds["Image"],
-                      name: ds["Name"],
-                      price: ds["Price"],
-                      detail: ds["Detail"],
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blueAccent.withOpacity(0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        ds["Image"],
-                        height: 150,
-                        width: 150,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      ds["Name"],
-                      style: AppWidget.semiBoldTextStyle().copyWith(
-                        color: Colors.black87,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const Spacer(),
-                    Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "\$${ds["Price"]}",
-                            style: const TextStyle(
-                              color: Color(0xFF008CFF),
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2196F3),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.add, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
         );
       },
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: (firstImg.startsWith('http')
+                  ? Image.network(firstImg,
+                      height: 120, width: double.infinity, fit: BoxFit.cover)
+                  : Image.asset(
+                      firstImg.isNotEmpty
+                          ? firstImg
+                          : 'assets/images/placeholder.png',
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                price.isNotEmpty ? '฿$price' : '฿0',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Color(0xFF0284C7)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final coll = FirebaseFirestore.instance.collection(category);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF7FF),
-      appBar: AppBar(
-        elevation: 0,
-        centerTitle: true,
-        title: Text(
-          widget.category,
-          style: AppWidget.boldTextStyle().copyWith(color: Colors.black87),
-        ),
-        backgroundColor: const Color(0xFFEFF7FF),
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Expanded(child: allProduct()),
-          ],
-        ),
+      appBar: AppBar(title: Text(category)),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: coll.snapshots(),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting)
+            return const Center(child: CircularProgressIndicator());
+
+          final docs = snap.data?.docs ?? [];
+          if (docs.isEmpty)
+            return Center(child: Text('ไม่มีสินค้าหมวด $category'));
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.7,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: docs.length,
+            itemBuilder: (context, idx) {
+              final d = docs[idx];
+              final data = d.data() as Map<String, dynamic>;
+              return buildProductCard(context, data, d.id);
+            },
+          );
+        },
       ),
     );
   }

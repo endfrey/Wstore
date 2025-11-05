@@ -13,12 +13,18 @@ import 'package:wstore/page/login.dart';
 import 'package:wstore/page/product_detail.dart';
 import 'package:wstore/page/profile.dart';
 import 'package:wstore/page/signup.dart';
+
 import 'package:wstore/services/constant.dart';
+import 'package:wstore/services/store_setup.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Stripe.publishableKey = publishableKey;
   await Firebase.initializeApp();
+
+  // ✅ Init store data
+  await StoreSetup.initializeStoreData();
+
   runApp(const MyApp());
 }
 
@@ -31,7 +37,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'WStore',
       theme: ThemeData(primarySwatch: Colors.green),
-      home: BottomNav(),
+
+      // ✅ เข้าหน้าโฮมปกติ (มี BottomNav และ Chat อยู่แล้ว)
+      home: const HomeAdmin(),
     );
   }
 }
