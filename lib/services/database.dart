@@ -1,37 +1,35 @@
 // lib/services/database.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class DatabaseMethods {
-  // ---------------------------
-  // Store
-  // ---------------------------
+  // ===============================================================
+  // ✅ STORE
+  // ===============================================================
   Future<DocumentSnapshot> getStoreInfo(String storeId) async {
-    return await FirebaseFirestore.instance
-        .collection("store")
-        .doc(storeId)
-        .get();
+    return FirebaseFirestore.instance.collection("store").doc(storeId).get();
   }
 
   Future<void> updateStoreInfo(
     String storeId,
-    Map<String, dynamic> storeData,
+    Map<String, dynamic> data,
   ) async {
-    return await FirebaseFirestore.instance
+    return FirebaseFirestore.instance
         .collection("store")
         .doc(storeId)
-        .set(storeData, SetOptions(merge: true));
+        .set(data, SetOptions(merge: true));
   }
 
-  // ---------------------------
-  // Chat Rooms
-  // ---------------------------
+  // ===============================================================
+  // ✅ CHAT ROOMS
+  // ===============================================================
   Future<void> createChatRoom(
     Map<String, dynamic> chatRoomData,
-    String chatRoomId,
+    String id,
   ) async {
-    return await FirebaseFirestore.instance
+    return FirebaseFirestore.instance
         .collection("chatRooms")
-        .doc(chatRoomId)
+        .doc(id)
         .set(chatRoomData, SetOptions(merge: true));
   }
 
@@ -42,23 +40,18 @@ class DatabaseMethods {
         .snapshots();
   }
 
-  // ---------------------------
-  // Users
-  // ---------------------------
-  Future addUserDetails(Map<String, dynamic> userInfoMap, String id) async {
-    return await FirebaseFirestore.instance
-        .collection("users")
-        .doc(id)
-        .set(userInfoMap);
+  // ===============================================================
+  // ✅ USERS
+  // ===============================================================
+  Future addUserDetails(Map<String, dynamic> userInfo, String id) async {
+    return FirebaseFirestore.instance.collection("users").doc(id).set(userInfo);
   }
 
-  // ---------------------------
-  // Products
-  // ---------------------------
-  Future addAllProducts(Map<String, dynamic> userInfoMap) async {
-    return await FirebaseFirestore.instance
-        .collection("Products")
-        .add(userInfoMap);
+  // ===============================================================
+  // ✅ PRODUCTS
+  // ===============================================================
+  Future addAllProducts(Map<String, dynamic> data) async {
+    return FirebaseFirestore.instance.collection("Products").add(data);
   }
 
   Future<List<Map<String, dynamic>>> getProductsByStore(String storeId) async {
@@ -70,137 +63,86 @@ class DatabaseMethods {
     return snap.docs.map((d) => d.data()).toList();
   }
 
-  Future addProduct(
-    Map<String, dynamic> userInfoMap,
-    String categoryname,
-  ) async {
-    return await FirebaseFirestore.instance
-        .collection(categoryname)
-        .add(userInfoMap);
+  Future addProduct(Map<String, dynamic> data, String category) async {
+    return FirebaseFirestore.instance.collection(category).add(data);
   }
 
-  // ---------------------------
-  // Orders
-  // ---------------------------
-
-  /// ✅ Admin เปลี่ยนสถานะเป็น Delivered
-  updateStatus(String id) async {
-    return await FirebaseFirestore.instance.collection("Orders").doc(id).update(
-      {"Status": "Delivered", "deliveredAt": FieldValue.serverTimestamp()},
-    );
+  Future<Stream<QuerySnapshot>> getProducts(String category) async {
+    return FirebaseFirestore.instance.collection(category).snapshots();
   }
 
-  /// ✅ ลูกค้าดึงออเดอร์ของตัวเอง
-  Future<Stream<QuerySnapshot>> getOrders(String email) async {
-    return FirebaseFirestore.instance
-        .collection("Orders")
-        .where("Email", isEqualTo: email)
-        .orderBy("createdAt", descending: true)
-        .snapshots();
+  Future<Stream<QuerySnapshot>> getAllProducts() async {
+    return FirebaseFirestore.instance.collection("Products").snapshots();
   }
 
-  /// ✅ Admin ดึงออเดอร์ทั้งหมด (ไม่กรองสถานะ)
-  Future<Stream<QuerySnapshot>> allOrder() async {
-    return FirebaseFirestore.instance
-        .collection("Orders")
-        .orderBy("createdAt", descending: true)
-        .snapshots();
+  // ✅ ฟังก์ชันลบสินค้าอย่างเดียว (ไม่ลบรูป)
+  Future<void> deleteProduct(String productId) async {
+    await FirebaseFirestore.instance
+        .collection("Products")
+        .doc(productId)
+        .delete();
   }
 
-  Future orderDetails(Map<String, dynamic> userInfoMap) async {
-    return await FirebaseFirestore.instance
-        .collection("Orders")
-        .add(userInfoMap);
-  }
-
-  // ================================================================
-  // ✅ FIXED VERSION: decrementStock + salesCount (transaction safe)
-  // ================================================================
-  Future<bool> decrementStock(String? productId, String? color, int qty) async {
-    if (productId == null) return false;
-
-    final docRef = FirebaseFirestore.instance
-        .collection('Products')
-        .doc(productId);
-
+  // ✅ ฟังก์ชันลบสินค้า + ลบรูปภาพใน Firebase Storage
+  Future<bool> deleteProductWithImages(String productId) async {
     try {
-      await FirebaseFirestore.instance.runTransaction((txn) async {
-        final snap = await txn.get(docRef);
-        if (!snap.exists) throw Exception("Product not found");
+      final docRef =
+          FirebaseFirestore.instance.collection("Products").doc(productId);
+      final snap = await docRef.get();
 
-        final data = snap.data() as Map<String, dynamic>;
+      if (!snap.exists) return false;
 
-        List variants = List<Map<String, dynamic>>.from(data['variants'] ?? []);
-        bool reduced = false;
+      final data = snap.data() as Map<String, dynamic>;
+      List images = [];
 
-        // ✅ CASE 1 — มี variants
-        if (variants.isNotEmpty) {
-          if (color == null) throw Exception("Color required");
+      // รองรับทั้ง images: [] และ Image: "url"
+      if (data["images"] is List) {
+        images = List<String>.from(data["images"]);
+      } else if (data["Image"] != null) {
+        images = [data["Image"]];
+      }
 
-          bool found = false;
-
-          for (int i = 0; i < variants.length; i++) {
-            final vColor = variants[i]['color']?.toString() ?? "";
-            if (vColor.toLowerCase() == color.toLowerCase()) {
-              found = true;
-
-              int stock = int.tryParse("${variants[i]['stock']}") ?? 0;
-              if (stock < qty) throw Exception("Insufficient stock");
-
-              final newStock = stock - qty;
-              if (newStock <= 0) {
-                variants.removeAt(i);
-              } else {
-                variants[i]['stock'] = newStock;
-              }
-
-              reduced = true;
-              break;
-            }
-          }
-
-          if (!found) throw Exception("Variant not found");
-
-          txn.update(docRef, {"variants": variants});
+      // ✅ ลบรูปใน Storage ทีละรูป
+      for (String url in images) {
+        try {
+          final ref = FirebaseStorage.instance.refFromURL(url);
+          await ref.delete();
+        } catch (e) {
+          print("Failed to delete image: $e");
         }
-        // ✅ CASE 2 — ไม่มี variants แต่มี stock
-        else if (data.containsKey("stock")) {
-          int stock = int.tryParse("${data['stock']}") ?? 0;
-          if (stock < qty) throw Exception("Insufficient stock");
+      }
 
-          txn.update(docRef, {"stock": stock - qty});
-          reduced = true;
-        }
-        // ✅ CASE 3 — ไม่มี stock ใด ๆ
-        else {
-          reduced = true;
-        }
-
-        // ✅ เพิ่มยอดขาย
-        final oldSales = int.tryParse("${data['salesCount'] ?? 0}") ?? 0;
-        txn.update(docRef, {"salesCount": oldSales + qty});
-      });
+      // ✅ ลบ Document
+      await docRef.delete();
 
       return true;
     } catch (e) {
-      print("ERROR decrementStock(): $e");
+      print("deleteProductWithImages Error: $e");
       return false;
     }
   }
 
-  // ---------------------------
-  // Search
-  // ---------------------------
-  Future<QuerySnapshot> search(String updatename) async {
-    return await FirebaseFirestore.instance
-        .collection("Products")
-        .where("SearchKey", isEqualTo: updatename.substring(0, 1).toUpperCase())
-        .get();
+  // ===============================================================
+  // ✅ ORDER
+  // ===============================================================
+  Future<Stream<QuerySnapshot>> getOrders(String email) async {
+    return FirebaseFirestore.instance
+        .collection("Orders")
+        .where("Email", isEqualTo: email)
+        .snapshots();
   }
 
-  // --------------------------------------------------------------
-  // ✅ สร้าง Pending Order ก่อนชำระเงิน
-  // --------------------------------------------------------------
+  Future<Stream<QuerySnapshot>> allOrder() async {
+    return FirebaseFirestore.instance.collection("Orders").snapshots();
+  }
+
+  updateStatus(String id) async {
+    return FirebaseFirestore.instance.collection("Orders").doc(id).update({
+      "Status": "Delivered",
+      "deliveredAt": FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<String?> createPendingOrder(Map<String, dynamic> orderData) async {
     try {
       orderData['Status'] = "Pending";
@@ -218,9 +160,6 @@ class DatabaseMethods {
     }
   }
 
-  // --------------------------------------------------------------
-  // ✅ ชำระเงินสำเร็จ → เปลี่ยนสถานะเป็น Shipping
-  // --------------------------------------------------------------
   Future<bool> finalizeOrder(String orderId) async {
     try {
       await FirebaseFirestore.instance.collection("Orders").doc(orderId).update(
@@ -231,6 +170,128 @@ class DatabaseMethods {
     } catch (e) {
       print("finalizeOrder error: $e");
       return false;
+    }
+  }
+
+  // ===============================================================
+  // ✅ STOCK & SALES
+  // ===============================================================
+  Future<bool> decrementStock(String? productId, String? color, int qty) async {
+    if (productId == null) return false;
+
+    final docRef =
+        FirebaseFirestore.instance.collection('Products').doc(productId);
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((txn) async {
+        final snap = await txn.get(docRef);
+        if (!snap.exists) throw Exception("Product not found");
+
+        final data = snap.data() as Map<String, dynamic>;
+        List variants = List<Map<String, dynamic>>.from(data['variants'] ?? []);
+
+        if (variants.isNotEmpty) {
+          if (color == null) throw Exception("Color required");
+
+          bool found = false;
+
+          for (int i = 0; i < variants.length; i++) {
+            final vColor = variants[i]['color']?.toString() ?? "";
+
+            if (vColor.toLowerCase() == color.toLowerCase()) {
+              found = true;
+
+              int stock = int.tryParse("${variants[i]['stock']}") ?? 0;
+              if (stock < qty) throw Exception("Insufficient stock");
+
+              int newStock = stock - qty;
+              if (newStock <= 0) {
+                variants.removeAt(i);
+              } else {
+                variants[i]['stock'] = newStock;
+              }
+              break;
+            }
+          }
+
+          if (!found) throw Exception("Variant not found");
+
+          txn.update(docRef, {"variants": variants});
+        } else if (data.containsKey("stock")) {
+          int stock = int.tryParse("${data['stock']}") ?? 0;
+          if (stock < qty) throw Exception("Insufficient stock");
+
+          txn.update(docRef, {"stock": stock - qty});
+        }
+
+        int oldSales = data["salesCount"] ?? 0;
+        txn.update(docRef, {"salesCount": oldSales + qty});
+      });
+
+      return true;
+    } catch (e) {
+      print("decrementStock error: $e");
+      return false;
+    }
+  }
+
+  // ===============================================================
+  // ✅ SEARCH
+  // ===============================================================
+  Future<QuerySnapshot> search(String name) async {
+    return FirebaseFirestore.instance
+        .collection("Products")
+        .where("SearchKey", isEqualTo: name.substring(0, 1).toUpperCase())
+        .get();
+  }
+
+  // ===============================================================
+  // ✅ CART
+  // ===============================================================
+  Future<void> addToCart(String userId, Map<String, dynamic> item) async {
+    await FirebaseFirestore.instance
+        .collection("Cart")
+        .doc(userId)
+        .collection("items")
+        .add(item);
+  }
+
+  Future<Stream<QuerySnapshot>> getCart(String userId) async {
+    return FirebaseFirestore.instance
+        .collection("Cart")
+        .doc(userId)
+        .collection("items")
+        .orderBy("addedAt", descending: false)
+        .snapshots();
+  }
+
+  Future<void> removeFromCart(String userId, String itemId) async {
+    await FirebaseFirestore.instance
+        .collection("Cart")
+        .doc(userId)
+        .collection("items")
+        .doc(itemId)
+        .delete();
+  }
+
+  Future<void> updateCartQty(String userId, String itemId, int qty) async {
+    await FirebaseFirestore.instance
+        .collection("Cart")
+        .doc(userId)
+        .collection("items")
+        .doc(itemId)
+        .update({"qty": qty});
+  }
+
+  Future<void> clearCart(String userId) async {
+    final items = await FirebaseFirestore.instance
+        .collection("Cart")
+        .doc(userId)
+        .collection("items")
+        .get();
+
+    for (var d in items.docs) {
+      await d.reference.delete();
     }
   }
 }

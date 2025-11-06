@@ -3,7 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:random_string/random_string.dart';
-import 'package:wstore/page/onboarding.dart';
+import 'package:wstore/page/login.dart';
 import 'package:wstore/services/auth.dart';
 import 'package:wstore/services/shared_pref.dart';
 import 'package:wstore/widget/support_widget.dart';
@@ -182,7 +182,7 @@ class _ProfileState extends State<Profile> {
                       await AuthMethod().SignOut().then((value) {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => const Onboarding()),
+                          MaterialPageRoute(builder: (context) => const LogIn()),
                         );
                       });
                     },
@@ -195,7 +195,7 @@ class _ProfileState extends State<Profile> {
                       await AuthMethod().deleteUser().then((value) {
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => const Onboarding()),
+                          MaterialPageRoute(builder: (context) => const LogIn()),
                         );
                       });
                     },

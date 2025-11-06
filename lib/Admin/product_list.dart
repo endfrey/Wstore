@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:wstore/Admin/edit_product.dart';
 import 'package:wstore/widget/support_widget.dart';
+import 'package:wstore/services/database.dart'; // ✅ เพิ่มมาใหม่
 
 class AdminStockPage extends StatefulWidget {
   const AdminStockPage({Key? key}) : super(key: key);
@@ -12,6 +13,64 @@ class AdminStockPage extends StatefulWidget {
 
 class _AdminStockPageState extends State<AdminStockPage> {
   final String storeId = "main_store";
+
+  // ✅ ฟังก์ชันยืนยันก่อนลบ
+  void _confirmDelete(BuildContext context, String productId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("ยืนยันการลบสินค้า"),
+          content: const Text(
+            "คุณต้องการลบสินค้านี้หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้",
+          ),
+          actions: [
+            TextButton(
+              child: const Text("ยกเลิก"),
+              onPressed: () => Navigator.pop(context),
+            ),
+            TextButton(
+              child: const Text("ลบ", style: TextStyle(color: Colors.red)),
+              onPressed: () async {
+                Navigator.pop(context);
+                await _deleteProduct(productId);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ✅ ฟังก์ชันลบสินค้า + ลบรูปใน Storage
+  Future<void> _deleteProduct(String productId) async {
+    try {
+      bool ok = await DatabaseMethods().deleteProductWithImages(productId);
+
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ ลบสินค้าเรียบร้อยแล้ว"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("❌ ลบสินค้าไม่สำเร็จ"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("❌ ลบสินค้าไม่สำเร็จ: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +92,7 @@ class _AdminStockPageState extends State<AdminStockPage> {
             onPressed: () {},
             icon: const Icon(Icons.add, color: Colors.white),
             tooltip: "เพิ่มสินค้าใหม่",
-          )
+          ),
         ],
       ),
 
@@ -62,25 +121,31 @@ class _AdminStockPageState extends State<AdminStockPage> {
             final docs = snap.data?.docs ?? [];
 
             if (docs.isEmpty) {
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.inventory_2_outlined,
-                      size: 90, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  Text(
-                    "ยังไม่มีสินค้า",
-                    style: AppWidget.semiBoldTextStyle()
-                        .copyWith(fontSize: 18, color: Colors.black54),
-                  ),
-                ],
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      size: 90,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "ยังไม่มีสินค้า",
+                      style: AppWidget.semiBoldTextStyle().copyWith(
+                        fontSize: 18,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
               );
             }
 
             return LayoutBuilder(
               builder: (context, constraints) {
-                // ✅ ปรับอัตราส่วนตามหน้าจอ ป้องกัน Overflow
-                double itemHeight = (constraints.maxHeight / 2.3);
+                double itemHeight = constraints.maxHeight / 2.3;
                 double itemWidth = constraints.maxWidth / 2;
 
                 return Padding(
@@ -141,11 +206,12 @@ class _AdminStockPageState extends State<AdminStockPage> {
                             children: [
                               ClipRRect(
                                 borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(20)),
+                                  top: Radius.circular(20),
+                                ),
                                 child: images.isNotEmpty
                                     ? Image.network(
                                         images.first,
-                                        height: 120,          // ✅ ลดเพื่อไม่ให้ล้น
+                                        height: 120,
                                         width: double.infinity,
                                         fit: BoxFit.cover,
                                       )
@@ -199,16 +265,19 @@ class _AdminStockPageState extends State<AdminStockPage> {
 
                                     const SizedBox(height: 10),
 
+                                    // ✅ ปุ่มแก้ไขสินค้า
                                     SizedBox(
                                       width: double.infinity,
                                       height: 34,
                                       child: ElevatedButton(
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF46C5D3),
+                                          backgroundColor: const Color(
+                                            0xFF46C5D3,
+                                          ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(14),
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
                                           ),
                                           elevation: 0,
                                         ),
@@ -216,23 +285,54 @@ class _AdminStockPageState extends State<AdminStockPage> {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) => EditProduct(
-                                                  productId: d.id),
+                                              builder: (_) =>
+                                                  EditProduct(productId: d.id),
                                             ),
                                           );
                                         },
                                         child: const Text(
                                           "แก้ไขสินค้า",
                                           style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold),
+                                            fontSize: 13,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 6),
+
+                                    // ✅ ปุ่มลบสินค้า
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 34,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        onPressed: () {
+                                          _confirmDelete(context, d.id);
+                                        },
+                                        child: const Text(
+                                          "ลบสินค้า",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              )
+                              ),
                             ],
                           ),
                         ),

@@ -17,7 +17,6 @@ class AddProduct extends StatefulWidget {
 class _AddProductState extends State<AddProduct> {
   final ImagePicker _picker = ImagePicker();
 
-  // รองรับหลายรูป
   List<File> selectedImages = [];
 
   final TextEditingController namecontroller = TextEditingController();
@@ -26,14 +25,11 @@ class _AddProductState extends State<AddProduct> {
 
   final String storeId = "main_store";
 
-  // หมวดหมู่สินค้า
   String? value;
   final List<String> categoryitem = ['Watch', 'Laptop', 'TV', 'Headphone'];
 
-  // Variants
   List<Map<String, TextEditingController>> variantControllers = [];
 
-  // UI state
   bool isUploading = false;
 
   @override
@@ -42,7 +38,7 @@ class _AddProductState extends State<AddProduct> {
     _addVariant();
   }
 
-  // เลือกหลายรูป (append ถ้ามีรูปเดิม)
+  // ✅ เลือกรูปหลายรูป
   Future<void> pickImages() async {
     try {
       final List<XFile>? images = await _picker.pickMultiImage(imageQuality: 80);
@@ -56,6 +52,7 @@ class _AddProductState extends State<AddProduct> {
     }
   }
 
+  // ✅ เพิ่ม Variant
   void _addVariant() {
     setState(() {
       variantControllers.add({
@@ -91,15 +88,15 @@ class _AddProductState extends State<AddProduct> {
     });
   }
 
-  // Validate price is numeric and > 0
+  // ✅ parse ราคา → double
   double? _parsePrice() {
     final raw = pricecontroller.text.trim();
     if (raw.isEmpty) return null;
-    // allow integer or decimal
-    final p = double.tryParse(raw.replaceAll(',', ''));
-    return p;
+
+    return double.tryParse(raw.replaceAll(',', ''))?.toDouble();
   }
 
+  // ✅ อัปโหลดสินค้า + แก้ปัญหาราคาเป็น 0
   Future<void> uploadItem() async {
     if (isUploading) return;
 
@@ -111,11 +108,13 @@ class _AddProductState extends State<AddProduct> {
       _err("กรุณากรอกชื่อสินค้า");
       return;
     }
+
     final parsedPrice = _parsePrice();
     if (parsedPrice == null || parsedPrice <= 0) {
       _err("กรุณากรอกราคาเป็นตัวเลขที่ถูกต้อง");
       return;
     }
+
     if (value == null) {
       _err("กรุณาเลือกหมวดหมู่สินค้า");
       return;
@@ -127,36 +126,39 @@ class _AddProductState extends State<AddProduct> {
     final List<String> imageUrls = [];
 
     try {
-      // Upload multiple images sequentially (you can parallelize but sequential is simpler & safer)
+      // ✅ Upload รูปทีละรูป
       for (int i = 0; i < selectedImages.length; i++) {
         final file = selectedImages[i];
         final ext = file.path.split('.').last;
         final ref = FirebaseStorage.instance.ref().child("products/$productId\_$i.$ext");
 
-        final uploadTask = ref.putFile(file);
-        final snapshot = await uploadTask;
+        final snapshot = await ref.putFile(file);
         final downloadURL = await snapshot.ref.getDownloadURL();
         imageUrls.add(downloadURL);
       }
 
-      // prepare variants
+      // ✅ prepare variants
       final List<Map<String, dynamic>> variants = variantControllers.map((vc) {
         final color = vc['color']?.text.trim() ?? "";
-        final stock = int.tryParse(vc['stock']?.text.trim() ?? "") ?? 0;
+        final rawStock = vc['stock']?.text.trim() ?? "0";
+        final stock = int.tryParse(rawStock) ?? 0;
+
         return {"color": color, "stock": stock};
       }).where((v) => (v["color"] as String).isNotEmpty).toList();
 
-      final String searchKey = (namecontroller.text.trim().isNotEmpty)
+      final String searchKey = namecontroller.text.trim().isNotEmpty
           ? namecontroller.text.trim()[0].toUpperCase()
           : "";
 
       final Map<String, dynamic> data = {
         "productId": productId,
         "Name": namecontroller.text.trim(),
-        // keep backward compatibility: single "Image" (first) + "images" list
         "Image": imageUrls.isNotEmpty ? imageUrls.first : "",
         "images": imageUrls,
-        "Price": parsedPrice,
+
+        // ✅ IMPORTANT — PRICE เป็น double 100%
+        "Price": parsedPrice.toDouble(),    
+
         "Detail": detailcontroller.text.trim(),
         "SearchKey": searchKey,
         "UpdatedName": namecontroller.text.trim().toUpperCase(),
@@ -166,14 +168,14 @@ class _AddProductState extends State<AddProduct> {
         "createdAt": FieldValue.serverTimestamp(),
       };
 
-      // Save to category collection
+      // ✅ Save to category
       await FirebaseFirestore.instance.collection(value!).doc(productId).set(data);
 
-      // Save to Products collection (real-time list)
+      // ✅ Save to Products
       await FirebaseFirestore.instance.collection("Products").doc(productId).set(data);
 
-      // Success UX
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Colors.green,
@@ -181,9 +183,9 @@ class _AddProductState extends State<AddProduct> {
         ),
       );
 
-      // Reset and pop back (so stock page will refresh)
       _resetForm();
       Navigator.pop(context);
+
     } catch (e) {
       _err("เกิดข้อผิดพลาดขณะอัปโหลด: $e");
     } finally {
@@ -210,7 +212,6 @@ class _AddProductState extends State<AddProduct> {
     super.dispose();
   }
 
-  // UI helpers
   Widget buildLabel(String text) {
     return Text(
       text,
@@ -278,7 +279,6 @@ class _AddProductState extends State<AddProduct> {
     );
   }
 
-  // small preview grid with delete buttons
   Widget _buildImagePreviewGrid() {
     if (selectedImages.isEmpty) return const SizedBox.shrink();
     return GridView.builder(
@@ -291,13 +291,12 @@ class _AddProductState extends State<AddProduct> {
         mainAxisSpacing: 10,
       ),
       itemBuilder: (context, index) {
-        final file = selectedImages[index];
         return Stack(
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.file(
-                file,
+                selectedImages[index],
                 fit: BoxFit.cover,
                 width: double.infinity,
                 height: double.infinity,
@@ -320,7 +319,6 @@ class _AddProductState extends State<AddProduct> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // background gradient matches your theme
       body: Stack(
         children: [
           Container(
@@ -339,22 +337,25 @@ class _AddProductState extends State<AddProduct> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Back Button + Title
                     Row(
                       children: [
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 26),
+                          child: const Icon(Icons.arrow_back_ios_new,
+                              color: Colors.white, size: 26),
                         ),
                         const Spacer(),
-                        Text("Add Product", style: AppWidget.boldTextStyle().copyWith(fontSize: 26, color: Colors.white)),
+                        Text(
+                          "Add Product",
+                          style: AppWidget.boldTextStyle()
+                              .copyWith(fontSize: 26, color: Colors.white),
+                        ),
                         const Spacer(),
                       ],
                     ),
 
                     const SizedBox(height: 28),
 
-                    // Upload Images
                     buildLabel("Upload Product Images"),
                     const SizedBox(height: 12),
 
@@ -373,7 +374,8 @@ class _AddProductState extends State<AddProduct> {
                           children: const [
                             Icon(Icons.add_photo_alternate, size: 50, color: Color(0xFF0096C7)),
                             SizedBox(height: 8),
-                            Text("Tap to select multiple images", style: TextStyle(color: Colors.grey)),
+                            Text("Tap to select multiple images",
+                                style: TextStyle(color: Colors.grey)),
                           ],
                         ),
                       ),
@@ -381,7 +383,6 @@ class _AddProductState extends State<AddProduct> {
 
                     const SizedBox(height: 16),
 
-                    // Preview grid
                     _buildImagePreviewGrid(),
 
                     const SizedBox(height: 20),
@@ -389,16 +390,26 @@ class _AddProductState extends State<AddProduct> {
                     buildLabel("Product Name"),
                     const SizedBox(height: 8),
                     buildTextField(controller: namecontroller, hint: "ชื่อสินค้า"),
+
                     const SizedBox(height: 20),
 
                     buildLabel("Product Price"),
                     const SizedBox(height: 8),
-                    buildTextField(controller: pricecontroller, keyboardType: TextInputType.numberWithOptions(decimal: true), hint: "เช่น 1990 หรือ 1299.50"),
+                    buildTextField(
+                      controller: pricecontroller,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      hint: "ราคาสินค้า 199 หรือ 1299.50",
+                    ),
+
                     const SizedBox(height: 20),
 
                     buildLabel("Product Detail"),
                     const SizedBox(height: 8),
-                    buildTextField(controller: detailcontroller, maxLines: 6, hint: "รายละเอียดสินค้า"),
+                    buildTextField(
+                        controller: detailcontroller,
+                        maxLines: 6,
+                        hint: "รายละเอียดสินค้า"),
+
                     const SizedBox(height: 20),
 
                     buildLabel("Product Category"),
@@ -417,18 +428,31 @@ class _AddProductState extends State<AddProduct> {
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Row(
                             children: [
-                              Expanded(flex: 2, child: buildBoxField(controllers['color']!, "Color")),
+                              Expanded(flex: 2,
+                                  child: buildBoxField(
+                                      controllers['color']!, "Color")),
                               const SizedBox(width: 10),
-                              Expanded(child: buildBoxField(controllers['stock']!, "Stock", number: true)),
+                              Expanded(
+                                  child: buildBoxField(
+                                      controllers['stock']!, "Stock",
+                                      number: true)),
                               const SizedBox(width: 10),
-                              IconButton(onPressed: () => _removeVariant(index), icon: const Icon(Icons.remove_circle, color: Colors.red)),
+                              IconButton(
+                                onPressed: () => _removeVariant(index),
+                                icon: const Icon(Icons.remove_circle,
+                                    color: Colors.red),
+                              ),
                             ],
                           ),
                         );
                       }),
                     ),
 
-                    TextButton.icon(onPressed: _addVariant, icon: const Icon(Icons.add), label: const Text("Add Variant")),
+                    TextButton.icon(
+                      onPressed: _addVariant,
+                      icon: const Icon(Icons.add),
+                      label: const Text("Add Variant"),
+                    ),
 
                     const SizedBox(height: 20),
 
@@ -436,16 +460,27 @@ class _AddProductState extends State<AddProduct> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0096C7),
-                          padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 50, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16)),
                         ),
                         onPressed: isUploading ? null : uploadItem,
                         child: SizedBox(
                           height: 24,
                           child: Center(
                             child: isUploading
-                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Text("Add Product", style: TextStyle(fontSize: 18, color: Colors.white)),
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Text(
+                                    "Add Product",
+                                    style: TextStyle(
+                                        fontSize: 18, color: Colors.white),
+                                  ),
                           ),
                         ),
                       ),
@@ -458,20 +493,25 @@ class _AddProductState extends State<AddProduct> {
             ),
           ),
 
-          // Optional overlay while uploading
           if (isUploading)
             Positioned.fill(
               child: Container(
                 color: Colors.black38,
                 child: const Center(
                   child: Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
                     child: Padding(
                       padding: EdgeInsets.all(18),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(width: 20, height: 20, child: CircularProgressIndicator()),
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(),
+                          ),
                           SizedBox(width: 16),
                           Text("Uploading...", style: TextStyle(fontSize: 16)),
                         ],

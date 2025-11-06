@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.green),
 
       // ✅ เข้าหน้าโฮมปกติ (มี BottomNav และ Chat อยู่แล้ว)
-      home: const HomeAdmin(),
+      home: const LogIn(),
     );
   }
 }

@@ -11,7 +11,7 @@ class AllOrders extends StatefulWidget {
 }
 
 class _AllOrdersState extends State<AllOrders> {
-  Stream? orderStream;
+  Stream<QuerySnapshot>? orderStream;
 
   @override
   void initState() {
@@ -58,30 +58,31 @@ class _AllOrdersState extends State<AllOrders> {
       "Delivered": {
         "bg": Colors.green.shade100,
         "text": Colors.green.shade700,
-        "icon": Icons.check_circle
+        "icon": Icons.check_circle,
       },
       "Shipping": {
         "bg": Colors.orange.shade100,
         "text": Colors.orange.shade700,
-        "icon": Icons.local_shipping
+        "icon": Icons.local_shipping,
       },
       "Cancelled": {
         "bg": Colors.red.shade100,
         "text": Colors.red.shade700,
-        "icon": Icons.cancel
+        "icon": Icons.cancel,
       },
       "Refunded": {
         "bg": Colors.purple.shade100,
         "text": Colors.purple.shade700,
-        "icon": Icons.cached
+        "icon": Icons.cached,
       },
     };
 
-    final cfg = map[status] ??
+    final cfg =
+        map[status] ??
         {
           "bg": Colors.blue.shade100,
           "text": Colors.blue.shade700,
-          "icon": Icons.pending
+          "icon": Icons.pending,
         };
 
     return Container(
@@ -108,13 +109,21 @@ class _AllOrdersState extends State<AllOrders> {
     );
   }
 
-  // ✅ การ์ดออเดอร์ (รองรับ field ทุกแบบ)
+  // ✅ การ์ดออเดอร์ แสดงราคา x จำนวน อย่างถูกต้อง
   Widget orderCard(DocumentSnapshot ds) {
     final data = ds.data() as Map<String, dynamic>;
 
-    // ✅ รองรับ field หลายแบบ ป้องกัน error
     String name = data["Product"] ?? data["productName"] ?? "ไม่พบชื่อสินค้า";
-    String price = (data["Price"] ?? data["price"] ?? 0).toString();
+
+    // ✅ ราคา / ชิ้น
+    double price = ((data["Price"] ?? data["price"] ?? 0) as num).toDouble();
+
+    // ✅ จำนวน
+    int qty = ((data["quantity"] ?? data["qty"] ?? 1) as num).toInt();
+
+    // ✅ ราคารวม
+    double total = price * qty;
+
     String image = data["ProductImage"] ?? data["image"] ?? "";
     String email = data["Email"] ?? data["userEmail"] ?? "";
     String status = data["Status"] ?? data["status"] ?? "Pending";
@@ -140,8 +149,12 @@ class _AllOrdersState extends State<AllOrders> {
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             child: image.isNotEmpty
-                ? Image.network(image,
-                    height: 150, width: double.infinity, fit: BoxFit.cover)
+                ? Image.network(
+                    image,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  )
                 : Container(
                     height: 150,
                     color: Colors.grey.shade200,
@@ -165,8 +178,9 @@ class _AllOrdersState extends State<AllOrders> {
                 ),
                 const SizedBox(height: 6),
 
+                // ✅ ราคา x จำนวน = รวม
                 Text(
-                  "฿$price",
+                  "฿${price.toStringAsFixed(0)}  x  $qty  =  ฿${total.toStringAsFixed(0)}",
                   style: const TextStyle(
                     color: Color(0xFF0284C7),
                     fontSize: 18,
@@ -178,12 +192,19 @@ class _AllOrdersState extends State<AllOrders> {
 
                 Row(
                   children: [
-                    const Icon(Icons.email_outlined,
-                        size: 18, color: Color(0xFF38BDF8)),
+                    const Icon(
+                      Icons.email_outlined,
+                      size: 18,
+                      color: Color(0xFF38BDF8),
+                    ),
                     const SizedBox(width: 6),
-                    Text(email,
-                        style:
-                            TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                    Text(
+                      email,
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
 
@@ -191,12 +212,19 @@ class _AllOrdersState extends State<AllOrders> {
 
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        size: 18, color: Color(0xFF38BDF8)),
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 18,
+                      color: Color(0xFF38BDF8),
+                    ),
                     const SizedBox(width: 6),
-                    Text(formatDate(orderDate),
-                        style: TextStyle(
-                            color: Colors.grey.shade700, fontSize: 13)),
+                    Text(
+                      formatDate(orderDate),
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
 
@@ -253,8 +281,10 @@ class _AllOrdersState extends State<AllOrders> {
 
         if (docs.isEmpty) {
           return const Center(
-            child: Text("ยังไม่มีออเดอร์",
-                style: TextStyle(fontSize: 20, color: Colors.white)),
+            child: Text(
+              "ยังไม่มีออเดอร์",
+              style: TextStyle(fontSize: 20, color: Colors.white),
+            ),
           );
         }
 
@@ -284,9 +314,10 @@ class _AllOrdersState extends State<AllOrders> {
                     child: Text(
                       "All Orders",
                       style: TextStyle(
-                          fontSize: 24,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold),
+                        fontSize: 24,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

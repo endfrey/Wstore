@@ -1,12 +1,8 @@
 // lib/page/product_detail.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
-import 'package:wstore/services/constant.dart';
 import 'package:wstore/services/database.dart';
 import 'package:wstore/services/shared_pref.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class ProductDetail extends StatefulWidget {
   final String image, name, price, detail;
@@ -30,13 +26,10 @@ class ProductDetail extends StatefulWidget {
 }
 
 class _ProductDetailState extends State<ProductDetail> {
-  String? userName, userEmail, userImage;
-  Map<String, dynamic>? paymentIntent;
+  String? userId, userEmail, userName, userImage;
   String? selectedColor;
   int quantity = 1;
-  bool processing = false;
 
-  // ✅ MULTIPLE IMAGES SUPPORT
   List<String> imageList = [];
   int _currentImageIndex = 0;
 
@@ -51,7 +44,14 @@ class _ProductDetailState extends State<ProductDetail> {
     });
   }
 
-  // ✅ โหลดรูปสินค้าจาก Firestore
+  Future<void> loadUser() async {
+    userId = await SharedPreferenceHelper().getUserID();
+    userName = await SharedPreferenceHelper().getUserName();
+    userEmail = await SharedPreferenceHelper().getUserEmail();
+    userImage = await SharedPreferenceHelper().getUserImage();
+    setState(() {});
+  }
+
   Future<void> _loadImages() async {
     if (widget.productId == null) {
       imageList = [widget.image];
@@ -65,21 +65,12 @@ class _ProductDetailState extends State<ProductDetail> {
         .get();
 
     if (doc.exists && doc.data()!["images"] != null) {
-      final imgs = List<String>.from(doc["images"]);
-      imageList = imgs;
+      imageList = List<String>.from(doc["images"]);
     } else {
       imageList = [widget.image];
     }
 
-    if (mounted) setState(() {});
-  }
-
-  Future<void> loadUser() async {
-    userName = await SharedPreferenceHelper().getUserName();
-    userEmail = await SharedPreferenceHelper().getUserEmail();
-    userImage = await SharedPreferenceHelper().getUserImage();
-
-    if (mounted) setState(() {});
+    setState(() {});
   }
 
   void _autoSelectFirstColor() {
@@ -88,7 +79,7 @@ class _ProductDetailState extends State<ProductDetail> {
     for (final v in widget.variants!) {
       final stock = int.tryParse("${v['stock']}") ?? 0;
       if (stock > 0) {
-        selectedColor = v["color"]?.toString();
+        selectedColor = v["color"].toString();
         quantity = 1;
         setState(() {});
         break;
@@ -96,41 +87,22 @@ class _ProductDetailState extends State<ProductDetail> {
     }
   }
 
-  int _unitPrice() {
-    return int.tryParse(widget.price) ??
-        double.tryParse(widget.price)?.round() ??
-        0;
-  }
+  int _unitPrice() => int.tryParse(widget.price) ?? 0;
 
   int _totalPrice() => _unitPrice() * quantity;
 
   int _selectedStockLocal() {
     if (widget.variants == null || widget.variants!.isEmpty) return 999999;
 
-    if (selectedColor == null) {
-      final stocks = widget.variants!
-          .map((e) => int.tryParse("${e['stock']}") ?? 0)
-          .toList();
-      return stocks.isEmpty ? 0 : stocks.reduce((a, b) => a > b ? a : b);
-    }
+    if (selectedColor == null) return 0;
 
     final match = widget.variants!.firstWhere(
-      (e) => (e["color"] ?? "").toString() == selectedColor,
+      (e) => e["color"].toString() == selectedColor,
       orElse: () => {"stock": 0},
     );
 
     return int.tryParse("${match["stock"]}") ?? 0;
   }
-
-  bool get _allOutOfStock {
-    if (widget.variants == null || widget.variants!.isNotEmpty == false)
-      return false;
-
-    return widget.variants!
-        .every((v) => (int.tryParse("${v['stock']}") ?? 0) <= 0);
-  }
-
-  // ----------------------- UI -----------------------
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +115,7 @@ class _ProductDetailState extends State<ProductDetail> {
         child: Column(
           children: [
             _backButton(),
-            _productImage(heroTag),
+            _productImages(heroTag),
             Expanded(child: _detailSection(localMax)),
           ],
         ),
@@ -176,8 +148,7 @@ class _ProductDetailState extends State<ProductDetail> {
     );
   }
 
-  // ✅ MULTIPLE IMAGES CAROUSEL
-  Widget _productImage(String heroTag) {
+  Widget _productImages(String heroTag) {
     return Hero(
       tag: heroTag,
       child: Container(
@@ -199,19 +170,17 @@ class _ProductDetailState extends State<ProductDetail> {
             alignment: Alignment.bottomCenter,
             children: [
               PageView.builder(
-                itemCount: imageList.isEmpty ? 1 : imageList.length,
+                itemCount: imageList.length,
                 onPageChanged: (i) {
                   setState(() => _currentImageIndex = i);
                 },
                 itemBuilder: (context, i) {
-                  final img =
-                      imageList.isEmpty ? widget.image : imageList[i];
-
-                  return Image.network(img, fit: BoxFit.contain);
+                  return Image.network(
+                    imageList[i],
+                    fit: BoxFit.contain,
+                  );
                 },
               ),
-
-              // ✅ Indicator
               if (imageList.length > 1)
                 Positioned(
                   bottom: 12,
@@ -247,24 +216,20 @@ class _ProductDetailState extends State<ProductDetail> {
         color: Colors.white,
         borderRadius:
             BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
-        boxShadow: [
-          BoxShadow(color: Color(0xFFE0F2FE), blurRadius: 20, offset: Offset(0, -2))
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _titlePrice(),
           const SizedBox(height: 15),
-          _detailsText(),
+          _details(),
           const SizedBox(height: 15),
           if (widget.variants != null && widget.variants!.isNotEmpty)
             _colorSelector(),
           const SizedBox(height: 10),
           _quantitySelector(localMax),
           const Spacer(),
-          _buyNowButton(),
-          const SizedBox(height: 10),
+          _addToCartButton(),
         ],
       ),
     );
@@ -286,34 +251,36 @@ class _ProductDetailState extends State<ProductDetail> {
           children: [
             Text("฿${widget.price}",
                 style: const TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF0284C7),
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
+                  color: Color(0xFF0284C7),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                )),
+            const SizedBox(height: 5),
             Text("รวม: ฿${_totalPrice()}",
                 style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0369A1))),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0369A1),
+                )),
           ],
         )
       ],
     );
   }
 
-  Widget _detailsText() {
+  Widget _details() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("Details",
             style: TextStyle(
-                fontSize: 18,
-                color: Color(0xFF0C4A6E),
-                fontWeight: FontWeight.w600)),
+              fontSize: 18,
+              color: Color(0xFF0C4A6E),
+              fontWeight: FontWeight.w600,
+            )),
         const SizedBox(height: 6),
         Text(widget.detail,
-            style: const TextStyle(
-                fontSize: 15, color: Colors.black54, height: 1.4)),
+            style: const TextStyle(fontSize: 15, color: Colors.black54)),
       ],
     );
   }
@@ -322,31 +289,34 @@ class _ProductDetailState extends State<ProductDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("สีที่เลือก",
+        const Text("สี",
             style: TextStyle(
                 fontSize: 16,
                 color: Color(0xFF0C4A6E),
                 fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           children: widget.variants!
-              .where((v) => (int.tryParse("${v['stock']}") ?? 0) > 0)
               .map((v) {
-            final c = v["color"].toString();
-            final s = int.tryParse("${v['stock']}") ?? 0;
+                final c = v["color"].toString();
+                final s = int.tryParse("${v["stock"]}") ?? 0;
 
-            return ChoiceChip(
-              label: Text("$c ($s)"),
-              selected: selectedColor == c,
-              onSelected: (sel) {
-                setState(() {
-                  selectedColor = sel ? c : null;
-                  if (quantity > s) quantity = s;
-                });
-              },
-            );
-          }).toList(),
+                if (s <= 0) return const SizedBox();
+
+                return ChoiceChip(
+                  label: Text("$c ($s)"),
+                  selected: selectedColor == c,
+                  onSelected: (_) {
+                    setState(() {
+                      selectedColor = c;
+                      quantity = 1;
+                    });
+                  },
+                );
+              })
+              .whereType<Widget>()
+              .toList(),
         ),
       ],
     );
@@ -356,8 +326,8 @@ class _ProductDetailState extends State<ProductDetail> {
     return Row(
       children: [
         const Text("จำนวน:",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-        const SizedBox(width: 12),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const SizedBox(width: 15),
         Container(
           decoration: BoxDecoration(
             color: Colors.grey.shade100,
@@ -376,11 +346,6 @@ class _ProductDetailState extends State<ProductDetail> {
                 onPressed: () {
                   if (quantity < localMax) {
                     setState(() => quantity++);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text("ถึงจำนวนสูงสุดในสต็อกแล้ว")),
-                    );
                   }
                 },
               ),
@@ -388,183 +353,62 @@ class _ProductDetailState extends State<ProductDetail> {
           ),
         ),
         const SizedBox(width: 12),
-        if (widget.variants != null && widget.variants!.isNotEmpty)
-          Text("คงเหลือ: $localMax",
-              style: TextStyle(
-                  color: localMax <= 0 ? Colors.red : Colors.green,
-                  fontSize: 14)),
+        Text("คงเหลือ: $localMax",
+            style: TextStyle(
+              fontSize: 14,
+              color: localMax <= 0 ? Colors.red : Colors.green,
+            )),
       ],
     );
   }
 
-  // ✅ BUY NOW (unchanged)
-  Widget _buyNowButton() {
+  // ✅ ✅ NEW BUTTON: Add To Cart
+  Widget _addToCartButton() {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF38BDF8),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          backgroundColor: Colors.green,
           padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
-        child: processing
-            ? const CircularProgressIndicator(
-                color: Colors.white, strokeWidth: 2)
-            : const Text("Buy Now",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700)),
-        onPressed: processing || _allOutOfStock
-            ? null
-            : () async {
-                if (widget.variants != null &&
-                    widget.variants!.isNotEmpty &&
-                    selectedColor == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("กรุณาเลือกสีสินค้า")),
-                  );
-                  return;
-                }
+        child: const Text(
+          "Add to Cart",
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white),
+        ),
+        onPressed: () async {
+          if (widget.variants != null &&
+              widget.variants!.isNotEmpty &&
+              selectedColor == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("กรุณาเลือกสีสินค้า")),
+            );
+            return;
+          }
 
-                await _processOrder();
-              },
+          await DatabaseMethods().addToCart(userId!, {
+            "productId": widget.productId,
+            "name": widget.name,
+            "image": widget.image,
+            "price": _unitPrice(),
+            "qty": quantity,
+            "color": selectedColor,
+            "addedAt": FieldValue.serverTimestamp(),
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("เพิ่มลงตะกร้าสำเร็จ ✅"),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        },
       ),
     );
-  }
-
-  // ------------------- ORDER FLOW (unchanged) -------------------
-
-  Future<void> _processOrder() async {
-    setState(() => processing = true);
-
-    final orderId = await DatabaseMethods().createPendingOrder({
-      'Product': widget.name,
-      'Price': _totalPrice().toString(),
-      'Name': userName,
-      'Email': userEmail,
-      'Image': userImage,
-      'ProductImage': widget.image,
-      'Status': 'pending',
-      'Color': selectedColor,
-      'Quantity': quantity,
-      'ProductId': widget.productId,
-      'StoreId': widget.storeId,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    if (orderId == null) {
-      setState(() => processing = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("สร้างคำสั่งซื้อไม่สำเร็จ")));
-      return;
-    }
-
-    try {
-      paymentIntent =
-          await createPaymentIntent(_totalPrice().toString(), 'USD');
-
-      await Stripe.instance.initPaymentSheet(
-        paymentSheetParameters: SetupPaymentSheetParameters(
-          paymentIntentClientSecret: paymentIntent?['client_secret'],
-          merchantDisplayName: 'WStore',
-        ),
-      );
-
-      await Stripe.instance.presentPaymentSheet();
-
-      final ok = await DatabaseMethods().decrementStock(
-        widget.productId,
-        selectedColor,
-        quantity,
-      );
-
-      if (!ok) {
-        await FirebaseFirestore.instance
-            .collection("Orders")
-            .doc(orderId)
-            .update({'Status': 'error'});
-        setState(() => processing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("สต็อกไม่พอ / มีข้อผิดพลาด")));
-        return;
-      }
-
-      await FirebaseFirestore.instance
-          .collection("Orders")
-          .doc(orderId)
-          .update({'Status': 'Delivered'});
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.check_circle, color: Colors.green, size: 48),
-                SizedBox(height: 12),
-                Text("Payment Successful",
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        );
-      }
-    } on StripeException {
-      await FirebaseFirestore.instance
-          .collection("Orders")
-          .doc(orderId)
-          .update({'Status': 'cancelled'});
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Payment cancelled")));
-    } catch (e) {
-      await FirebaseFirestore.instance
-          .collection("Orders")
-          .doc(orderId)
-          .update({'Status': 'error'});
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Payment error: $e")));
-    }
-
-    setState(() => processing = false);
-  }
-
-  // ------------------- STRIPE -------------------
-
-  Future<Map<String, dynamic>?> createPaymentIntent(
-      String amount, String currency) async {
-    try {
-      final body = {
-        'amount': _toCents(amount),
-        'currency': currency,
-        'payment_method_types[]': 'card',
-      };
-
-      final response = await http.post(
-        Uri.parse("https://api.stripe.com/v1/payment_intents"),
-        headers: {
-          'Authorization': 'Bearer $secretKey',
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: body,
-      );
-
-      return jsonDecode(response.body);
-    } catch (err) {
-      print("Stripe error: $err");
-      return null;
-    }
-  }
-
-  String _toCents(String amount) {
-    final a = int.tryParse(amount) ?? 0;
-    return (a * 100).toString();
   }
 }

@@ -14,7 +14,7 @@ class Order extends StatefulWidget {
 
 class _OrderState extends State<Order> {
   String? email;
-  Stream? orderStream;
+  Stream<QuerySnapshot>? orderStream;
 
   @override
   void initState() {
@@ -24,8 +24,17 @@ class _OrderState extends State<Order> {
 
   loadData() async {
     email = await SharedPreferenceHelper().getUserEmail();
-    orderStream = await DatabaseMethods().getOrders(email!);
-    setState(() {});
+
+    if (email == null || email!.isEmpty) {
+      print("❌ ERROR: Email is NULL");
+      return;
+    }
+
+    final stream = await DatabaseMethods().getOrders(email!);
+
+    setState(() {
+      orderStream = stream;
+    });
   }
 
   String formatDate(Timestamp? ts) {
@@ -34,7 +43,7 @@ class _OrderState extends State<Order> {
     return DateFormat("dd MMM yyyy • HH:mm").format(date);
   }
 
-  // ✅ สถานะแบบ professional
+  // ✅ ป้ายแสดงสถานะ
   Widget buildStatusBadge(String? status) {
     status = status ?? "Pending";
 
@@ -48,25 +57,16 @@ class _OrderState extends State<Order> {
         text = Colors.green.shade700;
         icon = Icons.check_circle;
         break;
-
       case "Shipping":
         bg = Colors.orange.shade100;
         text = Colors.orange.shade700;
         icon = Icons.local_shipping;
         break;
-
       case "Cancelled":
         bg = Colors.red.shade100;
         text = Colors.red.shade700;
         icon = Icons.cancel;
         break;
-
-      case "Refunded":
-        bg = Colors.purple.shade100;
-        text = Colors.purple.shade700;
-        icon = Icons.cached;
-        break;
-
       default:
         bg = Colors.blue.shade100;
         text = Colors.blue.shade700;
@@ -97,15 +97,15 @@ class _OrderState extends State<Order> {
     );
   }
 
-  // ✅ Card ดีไซน์ใหม่
+  // ✅ การ์ดแสดงออเดอร์ → *ไม่มีปุ่มแล้ว*
   Widget orderCard(DocumentSnapshot ds) {
     final data = ds.data() as Map<String, dynamic>;
 
     final String name = data["Product"] ?? "ไม่พบชื่อสินค้า";
     final String price = data["Price"]?.toString() ?? "0";
     final String image = data["ProductImage"] ?? "";
-    final Timestamp? orderDate = data["OrderDate"];
     final String status = data["Status"] ?? "Pending";
+    final Timestamp? orderDate = data["createdAt"] ?? data["orderDate"];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -122,7 +122,6 @@ class _OrderState extends State<Order> {
       ),
       child: Column(
         children: [
-          // ✅ รูปสินค้า
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             child: image.isNotEmpty
@@ -136,8 +135,7 @@ class _OrderState extends State<Order> {
                     height: 150,
                     width: double.infinity,
                     color: Colors.grey.shade200,
-                    child:
-                        const Icon(Icons.image_not_supported, size: 40),
+                    child: const Icon(Icons.image_not_supported, size: 40),
                   ),
           ),
 
@@ -146,7 +144,6 @@ class _OrderState extends State<Order> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ✅ ชื่อสินค้า
                 Text(
                   name,
                   maxLines: 2,
@@ -160,7 +157,6 @@ class _OrderState extends State<Order> {
 
                 const SizedBox(height: 6),
 
-                // ✅ ราคา
                 Text(
                   "฿$price",
                   style: const TextStyle(
@@ -172,7 +168,6 @@ class _OrderState extends State<Order> {
 
                 const SizedBox(height: 8),
 
-                // ✅ วันที่
                 Row(
                   children: [
                     const Icon(Icons.calendar_today_outlined,
@@ -190,59 +185,8 @@ class _OrderState extends State<Order> {
 
                 const SizedBox(height: 12),
 
-                // ✅ สถานะ
                 buildStatusBadge(status),
-
-                const SizedBox(height: 16),
-
-                // ✅ ปุ่มชุดล่าง (2 ปุ่ม)
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF38BDF8)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () {
-                          // TODO: ไปหน้า product detail
-                        },
-                        child: const Text(
-                          "ดูรายละเอียด",
-                          style: TextStyle(
-                              color: Color(0xFF0284C7),
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 10),
-
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF38BDF8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () {
-                          // TODO: chat กับร้าน
-                        },
-                        child: const Text(
-                          "ติดต่อร้าน",
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
+                const SizedBox(height: 10),
               ],
             ),
           ),
@@ -252,16 +196,22 @@ class _OrderState extends State<Order> {
   }
 
   Widget orderList() {
-    return StreamBuilder(
+    if (orderStream == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF38BDF8)),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
       stream: orderStream,
-      builder: (context, AsyncSnapshot snapshot) {
+      builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(color: Color(0xFF38BDF8)),
           );
         }
 
-        final docs = snapshot.data.docs;
+        final docs = snapshot.data!.docs;
 
         if (docs.isEmpty) {
           return Center(

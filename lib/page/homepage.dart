@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:wstore/page/cart_page.dart';
 import 'package:wstore/page/category_product.dart';
 import 'package:wstore/page/product_detail.dart';
 import 'package:wstore/services/shared_pref.dart';
@@ -39,10 +40,11 @@ class _HomeState extends State<Home> {
     if (mounted) setState(() {});
   }
 
-  // ✅ Header
+  // ✅ Header ใหม่ (เพิ่มปุ่ม Cart ข้างโปรไฟล์)
   Widget _header() {
     return Row(
       children: [
+        // ✅ Welcome Text
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,10 +65,42 @@ class _HomeState extends State<Home> {
             ],
           ),
         ),
+
+        // ✅ ปุ่ม Cart หน้า Home
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CartPage()),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.shade100.withOpacity(0.5),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.shopping_cart_outlined,
+              color: Color(0xFF0284C7),
+              size: 26,
+            ),
+          ),
+        ),
+
+        // ✅ Profile Image
         ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: (userImage != null && userImage!.isNotEmpty)
-              ? Image.network(userImage!, height: 55, width: 55, fit: BoxFit.cover)
+              ? Image.network(userImage!,
+                  height: 55, width: 55, fit: BoxFit.cover)
               : Container(
                   height: 55,
                   width: 55,
@@ -101,7 +135,8 @@ class _HomeState extends State<Home> {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => CategoryProduct(category: cat["name"] ?? 'Unknown'),
+                builder: (_) =>
+                    CategoryProduct(category: cat["name"] ?? 'Unknown'),
               ),
             ),
             child: Container(
@@ -141,7 +176,7 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // ✅ Product Card ใหม่ รองรับหลายรูป
+  // ✅ Product Card
   Widget buildProductCard(Map<String, dynamic> product) {
     final List<String> images =
         (product['images'] != null && product['images'] is List)
@@ -189,11 +224,13 @@ class _HomeState extends State<Home> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(14)),
               child: firstImg.startsWith("http")
                   ? Image.network(firstImg,
                       height: 120, width: double.infinity, fit: BoxFit.cover)
-                  : Image.asset(firstImg, height: 120, fit: BoxFit.cover),
+                  : Image.asset(firstImg,
+                      height: 120, width: double.infinity, fit: BoxFit.cover),
             ),
             Padding(
               padding: const EdgeInsets.all(10),
@@ -226,7 +263,7 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // ✅ UI หลัก
+  // ✅ MAIN UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -250,11 +287,13 @@ class _HomeState extends State<Home> {
             }).toList();
 
             final best = List<Map<String, dynamic>>.from(products)
-              ..sort((a, b) => (b["salesCount"] ?? 0).compareTo(a["salesCount"] ?? 0));
+              ..sort((a, b) => (b["salesCount"] ?? 0)
+                  .compareTo(a["salesCount"] ?? 0));
 
             final newest = List<Map<String, dynamic>>.from(products)
               ..sort((a, b) =>
-                  (b["createdAt"] ?? Timestamp.now()).compareTo(a["createdAt"] ?? Timestamp.now()));
+                  (b["createdAt"] ?? Timestamp.now())
+                      .compareTo(a["createdAt"] ?? Timestamp.now()));
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -264,7 +303,7 @@ class _HomeState extends State<Home> {
                   _header(),
                   const SizedBox(height: 20),
 
-                  // ✅ Search
+                  // ✅ Search Bar
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
@@ -280,7 +319,8 @@ class _HomeState extends State<Home> {
                     ),
                     child: TextField(
                       controller: searchController,
-                      onChanged: (v) => setState(() => searchText = v.toLowerCase()),
+                      onChanged: (v) =>
+                          setState(() => searchText = v.toLowerCase()),
                       decoration: InputDecoration(
                         hintText: "Search product...",
                         border: InputBorder.none,
@@ -288,7 +328,8 @@ class _HomeState extends State<Home> {
                         suffixIcon: searchText.isEmpty
                             ? null
                             : IconButton(
-                                icon: const Icon(Icons.close, color: Color(0xFF38BDF8)),
+                                icon: const Icon(Icons.close,
+                                    color: Color(0xFF38BDF8)),
                                 onPressed: () {
                                   searchController.clear();
                                   setState(() => searchText = "");
@@ -299,7 +340,6 @@ class _HomeState extends State<Home> {
                   ),
 
                   const SizedBox(height: 22),
-
                   const Text("Categories",
                       style: TextStyle(
                           color: Color(0xFF0C4A6E),
@@ -354,7 +394,8 @@ class _HomeState extends State<Home> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: products.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       childAspectRatio: 0.68,
                       crossAxisSpacing: 12,
