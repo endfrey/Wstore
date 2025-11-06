@@ -51,7 +51,7 @@ class _HomeState extends State<Home> {
             children: [
               const SizedBox(height: 10),
               const Text(
-                "Welcome 👋",
+                "Welcome ",
                 style: TextStyle(
                   color: Color(0xFF0C4A6E),
                   fontSize: 26,
@@ -59,7 +59,7 @@ class _HomeState extends State<Home> {
                 ),
               ),
               Text(
-                "${userName ?? 'User'}, พร้อมช้อปหรือยัง?",
+                "${userName ?? 'User'}, READY TO SHOP?",
                 style: const TextStyle(color: Colors.black54, fontSize: 15),
               ),
             ],

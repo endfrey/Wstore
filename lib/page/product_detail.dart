@@ -87,9 +87,16 @@ class _ProductDetailState extends State<ProductDetail> {
     }
   }
 
-  int _unitPrice() => int.tryParse(widget.price) ?? 0;
+  int _unitPrice() {
+    // ลบช่องว่างและเครื่องหมายจุลภาค
+    String cleanPrice = widget.price.replaceAll(RegExp(r'[^\d.]'), '');
+    return double.tryParse(cleanPrice)?.toInt() ?? 0; // แปลงเป็น int ถ้าแปลงได้
+  }
 
-  int _totalPrice() => _unitPrice() * quantity;
+  int _totalPrice() {
+    // คำนวณจากราคาต่อชิ้น * จำนวน
+    return _unitPrice() * quantity;
+  }
 
   int _selectedStockLocal() {
     if (widget.variants == null || widget.variants!.isEmpty) return 999999;
@@ -126,25 +133,31 @@ class _ProductDetailState extends State<ProductDetail> {
   Widget _backButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
                     color: Colors.blue.shade100.withOpacity(0.5),
-                    blurRadius: 8)
-              ],
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Color(0xFF0C4A6E),
+                size: 20,
+              ),
             ),
-            child: const Icon(Icons.arrow_back_ios_new,
-                color: Color(0xFF0C4A6E), size: 20),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -175,10 +188,7 @@ class _ProductDetailState extends State<ProductDetail> {
                   setState(() => _currentImageIndex = i);
                 },
                 itemBuilder: (context, i) {
-                  return Image.network(
-                    imageList[i],
-                    fit: BoxFit.contain,
-                  );
+                  return Image.network(imageList[i], fit: BoxFit.contain);
                 },
               ),
               if (imageList.length > 1)
@@ -214,8 +224,10 @@ class _ProductDetailState extends State<ProductDetail> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius:
-            BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,30 +252,37 @@ class _ProductDetailState extends State<ProductDetail> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Text(widget.name,
-              style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0C4A6E))),
+          child: Text(
+            widget.name,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0C4A6E),
+            ),
+          ),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text("฿${widget.price}",
-                style: const TextStyle(
-                  color: Color(0xFF0284C7),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                )),
+            Text(
+              "฿${widget.price}",
+              style: const TextStyle(
+                color: Color(0xFF0284C7),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 5),
-            Text("รวม: ฿${_totalPrice()}",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0369A1),
-                )),
+            Text(
+              "รวม: ฿${_totalPrice()}",
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0369A1),
+              ),
+            ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -272,15 +291,19 @@ class _ProductDetailState extends State<ProductDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Details",
-            style: TextStyle(
-              fontSize: 18,
-              color: Color(0xFF0C4A6E),
-              fontWeight: FontWeight.w600,
-            )),
+        const Text(
+          "Details",
+          style: TextStyle(
+            fontSize: 18,
+            color: Color(0xFF0C4A6E),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(widget.detail,
-            style: const TextStyle(fontSize: 15, color: Colors.black54)),
+        Text(
+          widget.detail,
+          style: const TextStyle(fontSize: 15, color: Colors.black54),
+        ),
       ],
     );
   }
@@ -289,11 +312,14 @@ class _ProductDetailState extends State<ProductDetail> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("สี",
-            style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF0C4A6E),
-                fontWeight: FontWeight.w600)),
+        const Text(
+          "สี",
+          style: TextStyle(
+            fontSize: 16,
+            color: Color(0xFF0C4A6E),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 10),
         Wrap(
           spacing: 8,
@@ -325,8 +351,10 @@ class _ProductDetailState extends State<ProductDetail> {
   Widget _quantitySelector(int localMax) {
     return Row(
       children: [
-        const Text("จำนวน:",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text(
+          "จำนวน:",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(width: 15),
         Container(
           decoration: BoxDecoration(
@@ -337,8 +365,9 @@ class _ProductDetailState extends State<ProductDetail> {
             children: [
               IconButton(
                 icon: const Icon(Icons.remove),
-                onPressed:
-                    quantity > 1 ? () => setState(() => quantity--) : null,
+                onPressed: quantity > 1
+                    ? () => setState(() => quantity--)
+                    : null,
               ),
               Text("$quantity", style: const TextStyle(fontSize: 16)),
               IconButton(
@@ -353,62 +382,68 @@ class _ProductDetailState extends State<ProductDetail> {
           ),
         ),
         const SizedBox(width: 12),
-        Text("คงเหลือ: $localMax",
-            style: TextStyle(
-              fontSize: 14,
-              color: localMax <= 0 ? Colors.red : Colors.green,
-            )),
+        Text(
+          "คงเหลือ: $localMax",
+          style: TextStyle(
+            fontSize: 14,
+            color: localMax <= 0 ? Colors.red : Colors.green,
+          ),
+        ),
       ],
     );
   }
 
   // ✅ ✅ NEW BUTTON: Add To Cart
   Widget _addToCartButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+  return SizedBox(
+    width: double.infinity,
+    child: ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
-        child: const Text(
-          "Add to Cart",
-          style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white),
-        ),
-        onPressed: () async {
-          if (widget.variants != null &&
-              widget.variants!.isNotEmpty &&
-              selectedColor == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("กรุณาเลือกสีสินค้า")),
-            );
-            return;
-          }
-
-          await DatabaseMethods().addToCart(userId!, {
-            "productId": widget.productId,
-            "name": widget.name,
-            "image": widget.image,
-            "price": _unitPrice(),
-            "qty": quantity,
-            "color": selectedColor,
-            "addedAt": FieldValue.serverTimestamp(),
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("เพิ่มลงตะกร้าสำเร็จ ✅"),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        },
       ),
-    );
-  }
+      child: const Text(
+        "Add to Cart",
+        style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white),
+      ),
+      onPressed: () async {
+        // ตรวจสอบว่าได้เลือกสีสินค้าหรือไม่
+        if (widget.variants != null &&
+            widget.variants!.isNotEmpty &&
+            selectedColor == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("กรุณาเลือกสีสินค้า")),
+          );
+          return;
+        }
+
+        // เพิ่มสินค้าลงในตะกร้า
+        await DatabaseMethods().addToCart(userId!, {
+          "productId": widget.productId,
+          "name": widget.name,
+          "image": widget.image,
+          "price": _unitPrice(), // ราคาต่อชิ้น
+          "qty": quantity, // จำนวนที่เลือก
+          "color": selectedColor,
+          "total": _totalPrice(), // ราคารวม
+          "addedAt": FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("เพิ่มลงตะกร้าสำเร็จ ✅"),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      },
+    ),
+  );
+}
+
 }

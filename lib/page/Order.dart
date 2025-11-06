@@ -1,4 +1,3 @@
-// lib/page/order.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:wstore/services/database.dart';
@@ -97,13 +96,16 @@ class _OrderState extends State<Order> {
     );
   }
 
-  // ✅ การ์ดแสดงออเดอร์ → *ไม่มีปุ่มแล้ว*
+  // ✅ การ์ดแสดงออเดอร์
   Widget orderCard(DocumentSnapshot ds) {
-    final data = ds.data() as Map<String, dynamic>;
+    final data = ds.data() as Map<String, dynamic>? ?? {};
 
     final String name = data["Product"] ?? "ไม่พบชื่อสินค้า";
-    final String price = data["Price"]?.toString() ?? "0";
+    final int price = int.tryParse(data["Price"]?.toString() ?? "0") ?? 0;
+    final int qty = (data["Quantity"] ?? 1).toInt();
+    final int total = price * qty;
     final String image = data["ProductImage"] ?? "";
+    final String color = data["Color"] ?? "-";
     final String status = data["Status"] ?? "Pending";
     final Timestamp? orderDate = data["createdAt"] ?? data["orderDate"];
 
@@ -121,7 +123,9 @@ class _OrderState extends State<Order> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // รูปสินค้า
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             child: image.isNotEmpty
@@ -139,6 +143,7 @@ class _OrderState extends State<Order> {
                   ),
           ),
 
+          // ข้อมูลสินค้า
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -157,8 +162,15 @@ class _OrderState extends State<Order> {
 
                 const SizedBox(height: 6),
 
+                if (color != "-")
+                  Text("สี: $color",
+                      style:
+                          const TextStyle(fontSize: 14, color: Colors.black54)),
+
+                const SizedBox(height: 4),
+
                 Text(
-                  "฿$price",
+                  "฿$price x $qty = ฿$total",
                   style: const TextStyle(
                     color: Color(0xFF0284C7),
                     fontSize: 18,

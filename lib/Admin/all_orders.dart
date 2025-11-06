@@ -50,7 +50,7 @@ class _AllOrdersState extends State<AllOrders> {
     );
   }
 
-  // ✅ Badge
+  // ✅ Badge แสดงสถานะ
   Widget buildStatusBadge(String? status) {
     status ??= "Pending";
 
@@ -79,11 +79,11 @@ class _AllOrdersState extends State<AllOrders> {
 
     final cfg =
         map[status] ??
-        {
-          "bg": Colors.blue.shade100,
-          "text": Colors.blue.shade700,
-          "icon": Icons.pending,
-        };
+            {
+              "bg": Colors.blue.shade100,
+              "text": Colors.blue.shade700,
+              "icon": Icons.pending,
+            };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -113,23 +113,30 @@ class _AllOrdersState extends State<AllOrders> {
   Widget orderCard(DocumentSnapshot ds) {
     final data = ds.data() as Map<String, dynamic>;
 
+    // ชื่อสินค้า
     String name = data["Product"] ?? data["productName"] ?? "ไม่พบชื่อสินค้า";
 
-    // ✅ ราคา / ชิ้น
-    double price = ((data["Price"] ?? data["price"] ?? 0) as num).toDouble();
+    // ✅ ดึงราคาต่อชิ้น (รองรับทั้ง String และ Number)
+    double price = 0.0;
+    if (data["Price"] is String) {
+      price = double.tryParse(data["Price"].replaceAll(",", "")) ?? 0.0;
+    } else if (data["Price"] is num) {
+      price = (data["Price"] as num).toDouble();
+    } else if (data["price"] is num) {
+      price = (data["price"] as num).toDouble();
+    }
 
-    // ✅ จำนวน
-    int qty = ((data["quantity"] ?? data["qty"] ?? 1) as num).toInt();
+    // ✅ จำนวนสินค้า
+    int qty = ((data["Quantity"] ?? data["quantity"] ?? data["qty"] ?? 1) as num).toInt();
 
-    // ✅ ราคารวม
+    // ✅ ราคารวมทั้งหมด
     double total = price * qty;
 
+    // ✅ ข้อมูลอื่น ๆ
     String image = data["ProductImage"] ?? data["image"] ?? "";
     String email = data["Email"] ?? data["userEmail"] ?? "";
     String status = data["Status"] ?? data["status"] ?? "Pending";
-
-    Timestamp? orderDate =
-        data["OrderDate"] ?? data["orderDate"] ?? data["date"];
+    Timestamp? orderDate = data["OrderDate"] ?? data["orderDate"] ?? data["date"];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -146,6 +153,7 @@ class _AllOrdersState extends State<AllOrders> {
       ),
       child: Column(
         children: [
+          // ✅ รูปภาพสินค้า
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             child: image.isNotEmpty
@@ -161,6 +169,8 @@ class _AllOrdersState extends State<AllOrders> {
                     child: const Icon(Icons.image_not_supported, size: 40),
                   ),
           ),
+
+          // ✅ ข้อมูลสินค้า
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -178,7 +188,7 @@ class _AllOrdersState extends State<AllOrders> {
                 ),
                 const SizedBox(height: 6),
 
-                // ✅ ราคา x จำนวน = รวม
+                // ✅ แสดงราคา x จำนวน = รวม
                 Text(
                   "฿${price.toStringAsFixed(0)}  x  $qty  =  ฿${total.toStringAsFixed(0)}",
                   style: const TextStyle(
@@ -190,13 +200,10 @@ class _AllOrdersState extends State<AllOrders> {
 
                 const SizedBox(height: 10),
 
+                // ✅ แสดงอีเมลลูกค้า
                 Row(
                   children: [
-                    const Icon(
-                      Icons.email_outlined,
-                      size: 18,
-                      color: Color(0xFF38BDF8),
-                    ),
+                    const Icon(Icons.email_outlined, size: 18, color: Color(0xFF38BDF8)),
                     const SizedBox(width: 6),
                     Text(
                       email,
@@ -210,13 +217,10 @@ class _AllOrdersState extends State<AllOrders> {
 
                 const SizedBox(height: 6),
 
+                // ✅ วันที่สั่งซื้อ
                 Row(
                   children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 18,
-                      color: Color(0xFF38BDF8),
-                    ),
+                    const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF38BDF8)),
                     const SizedBox(width: 6),
                     Text(
                       formatDate(orderDate),
@@ -232,6 +236,7 @@ class _AllOrdersState extends State<AllOrders> {
                 buildStatusBadge(status),
                 const SizedBox(height: 16),
 
+                // ✅ ปุ่มเปลี่ยนสถานะ
                 if (status != "Delivered")
                   SizedBox(
                     width: double.infinity,
@@ -272,9 +277,7 @@ class _AllOrdersState extends State<AllOrders> {
       stream: orderStream,
       builder: (context, AsyncSnapshot snap) {
         if (!snap.hasData) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
+          return const Center(child: CircularProgressIndicator(color: Colors.white));
         }
 
         final docs = snap.data.docs;

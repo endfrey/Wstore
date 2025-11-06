@@ -1,4 +1,3 @@
-// lib/services/database.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -75,53 +74,6 @@ class DatabaseMethods {
     return FirebaseFirestore.instance.collection("Products").snapshots();
   }
 
-  // ✅ ฟังก์ชันลบสินค้าอย่างเดียว (ไม่ลบรูป)
-  Future<void> deleteProduct(String productId) async {
-    await FirebaseFirestore.instance
-        .collection("Products")
-        .doc(productId)
-        .delete();
-  }
-
-  // ✅ ฟังก์ชันลบสินค้า + ลบรูปภาพใน Firebase Storage
-  Future<bool> deleteProductWithImages(String productId) async {
-    try {
-      final docRef =
-          FirebaseFirestore.instance.collection("Products").doc(productId);
-      final snap = await docRef.get();
-
-      if (!snap.exists) return false;
-
-      final data = snap.data() as Map<String, dynamic>;
-      List images = [];
-
-      // รองรับทั้ง images: [] และ Image: "url"
-      if (data["images"] is List) {
-        images = List<String>.from(data["images"]);
-      } else if (data["Image"] != null) {
-        images = [data["Image"]];
-      }
-
-      // ✅ ลบรูปใน Storage ทีละรูป
-      for (String url in images) {
-        try {
-          final ref = FirebaseStorage.instance.refFromURL(url);
-          await ref.delete();
-        } catch (e) {
-          print("Failed to delete image: $e");
-        }
-      }
-
-      // ✅ ลบ Document
-      await docRef.delete();
-
-      return true;
-    } catch (e) {
-      print("deleteProductWithImages Error: $e");
-      return false;
-    }
-  }
-
   // ===============================================================
   // ✅ ORDER
   // ===============================================================
@@ -149,9 +101,8 @@ class DatabaseMethods {
       orderData['createdAt'] = FieldValue.serverTimestamp();
       orderData['orderDate'] = FieldValue.serverTimestamp();
 
-      final doc = await FirebaseFirestore.instance
-          .collection("Orders")
-          .add(orderData);
+      final doc =
+          await FirebaseFirestore.instance.collection("Orders").add(orderData);
 
       return doc.id;
     } catch (e) {
@@ -165,7 +116,6 @@ class DatabaseMethods {
       await FirebaseFirestore.instance.collection("Orders").doc(orderId).update(
         {"Status": "Shipping", "paidAt": FieldValue.serverTimestamp()},
       );
-
       return true;
     } catch (e) {
       print("finalizeOrder error: $e");
@@ -194,16 +144,12 @@ class DatabaseMethods {
           if (color == null) throw Exception("Color required");
 
           bool found = false;
-
           for (int i = 0; i < variants.length; i++) {
             final vColor = variants[i]['color']?.toString() ?? "";
-
             if (vColor.toLowerCase() == color.toLowerCase()) {
               found = true;
-
               int stock = int.tryParse("${variants[i]['stock']}") ?? 0;
               if (stock < qty) throw Exception("Insufficient stock");
-
               int newStock = stock - qty;
               if (newStock <= 0) {
                 variants.removeAt(i);
@@ -213,14 +159,11 @@ class DatabaseMethods {
               break;
             }
           }
-
           if (!found) throw Exception("Variant not found");
-
           txn.update(docRef, {"variants": variants});
         } else if (data.containsKey("stock")) {
           int stock = int.tryParse("${data['stock']}") ?? 0;
           if (stock < qty) throw Exception("Insufficient stock");
-
           txn.update(docRef, {"stock": stock - qty});
         }
 
@@ -249,12 +192,30 @@ class DatabaseMethods {
   // ✅ CART
   // ===============================================================
   Future<void> addToCart(String userId, Map<String, dynamic> item) async {
-    await FirebaseFirestore.instance
-        .collection("Cart")
-        .doc(userId)
-        .collection("items")
-        .add(item);
+  int price = 0;
+  if (item["price"] is int) {
+    price = item["price"];
+  } else if (item["price"] is String) {
+    price = int.tryParse(item["price"]) ?? 0;
   }
+
+  int qty = item["qty"] is int
+      ? item["qty"]
+      : int.tryParse(item["qty"].toString()) ?? 1;
+
+  item["price"] = price;
+  item["qty"] = qty;
+  item["total"] = price * qty;
+  item["addedAt"] = FieldValue.serverTimestamp(); // ✅ เพิ่มบรรทัดนี้
+
+  await FirebaseFirestore.instance
+      .collection("Cart")
+      .doc(userId)
+      .collection("items")
+      .add(item);
+}
+
+
 
   Future<Stream<QuerySnapshot>> getCart(String userId) async {
     return FirebaseFirestore.instance
@@ -275,13 +236,27 @@ class DatabaseMethods {
   }
 
   Future<void> updateCartQty(String userId, String itemId, int qty) async {
-    await FirebaseFirestore.instance
-        .collection("Cart")
-        .doc(userId)
-        .collection("items")
-        .doc(itemId)
-        .update({"qty": qty});
-  }
+  final ref = FirebaseFirestore.instance
+      .collection("Cart")
+      .doc(userId)
+      .collection("items")
+      .doc(itemId);
+
+  final snap = await ref.get();
+  if (!snap.exists) return;
+
+  final data = snap.data()!;
+  final price = int.tryParse(data["price"].toString()) ?? 0;
+
+  // คำนวณราคาทั้งหมดใหม่
+  final total = price * qty;
+
+  await ref.update({
+    "qty": qty,
+    "total": total,  // อัพเดต total ด้วยราคาที่คำนวณใหม่
+  });
+}
+
 
   Future<void> clearCart(String userId) async {
     final items = await FirebaseFirestore.instance
@@ -292,6 +267,56 @@ class DatabaseMethods {
 
     for (var d in items.docs) {
       await d.reference.delete();
+    }
+  }
+
+  // ===============================================================
+  // ✅ DELETE PRODUCT WITH IMAGES (คืนค่า bool)
+  // ===============================================================
+  Future<bool> deleteProductWithImages(String productId) async {
+    try {
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      final FirebaseStorage storage = FirebaseStorage.instance;
+
+      final docRef = firestore.collection("Products").doc(productId);
+      final productSnap = await docRef.get();
+
+      if (!productSnap.exists) {
+        print("⚠️ ไม่พบสินค้าที่ต้องการลบ");
+        return false;
+      }
+
+      final data = productSnap.data() as Map<String, dynamic>;
+
+      if (data.containsKey("image") && data["image"] != null) {
+        await _deleteImageFromStorage(data["image"], storage);
+      }
+
+      if (data.containsKey("images") &&
+          data["images"] is List &&
+          (data["images"] as List).isNotEmpty) {
+        for (var url in (data["images"] as List)) {
+          await _deleteImageFromStorage(url, storage);
+        }
+      }
+
+      await docRef.delete();
+      print("✅ ลบสินค้าพร้อมรูปภาพสำเร็จ: $productId");
+      return true;
+    } catch (e) {
+      print("❌ เกิดข้อผิดพลาดขณะลบสินค้า: $e");
+      return false;
+    }
+  }
+
+  Future<void> _deleteImageFromStorage(
+      String imageUrl, FirebaseStorage storage) async {
+    try {
+      final ref = storage.refFromURL(imageUrl);
+      await ref.delete();
+      print("🗑️ ลบรูปสำเร็จ: $imageUrl");
+    } catch (e) {
+      print("⚠️ ลบรูปภาพไม่สำเร็จ: $e");
     }
   }
 }

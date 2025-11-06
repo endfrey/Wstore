@@ -30,6 +30,7 @@ class _CartPageState extends State<CartPage> {
     setState(() {});
   }
 
+  // ✅ คำนวณราคารวมทั้งหมดในตะกร้า
   int _totalPrice(List<QueryDocumentSnapshot> docs) {
     int total = 0;
     for (var d in docs) {
@@ -104,6 +105,7 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+  // ✅ กล่องรวมยอด
   Widget _bottomCheckoutBox(List<QueryDocumentSnapshot> docs) {
     final total = _totalPrice(docs);
 
@@ -123,8 +125,7 @@ class _CartPageState extends State<CartPage> {
           Expanded(
             child: Text(
               "รวมทั้งหมด: ฿$total",
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           ElevatedButton(
@@ -145,11 +146,14 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
+  // ✅ การ์ดสินค้าในตะกร้า
   Widget _cartItemCard(String itemId, Map<String, dynamic> data) {
     final qty = (data["qty"] ?? 1).toInt();
     final price = (data["price"] ?? 0).toInt();
     final color = data["color"];
     final image = data["image"];
+    final name = data["name"] ?? "";
+    final total = price * qty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -181,18 +185,18 @@ class _CartPageState extends State<CartPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  data["name"] ?? "",
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                      const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                if (color != null) Text("สี: $color"),
-                Text("฿$price",
+                Text(name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        color: Color(0xFF0284C7),
-                        fontWeight: FontWeight.bold)),
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                if (color != null) Text("สี: $color"),
+                Text(
+                  "฿$price x $qty = ฿$total",
+                  style: const TextStyle(
+                      color: Color(0xFF0284C7),
+                      fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
@@ -256,7 +260,7 @@ class _CartPageState extends State<CartPage> {
     }
 
     final total = _totalPrice(snap.docs);
-    final amountInCents = (total * 100).toString();
+    final amountInCents = (total * 100).toString(); // Stripe ใช้หน่วยเป็น cent
 
     try {
       final intent = await _createPaymentIntent(amountInCents, "THB");

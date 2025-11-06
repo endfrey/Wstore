@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:wstore/Admin/edit_product.dart';
 import 'package:wstore/widget/support_widget.dart';
-import 'package:wstore/services/database.dart'; // ✅ เพิ่มมาใหม่
+import 'package:wstore/services/database.dart';
 
 class AdminStockPage extends StatefulWidget {
   const AdminStockPage({Key? key}) : super(key: key);
@@ -168,9 +168,17 @@ class _AdminStockPageState extends State<AdminStockPage> {
                           : (data['Image'] != null ? [data['Image']] : []);
 
                       final title = data['UpdatedName'] ?? data['Name'] ?? '';
-                      final price = data['Price']?.toString() ?? '0';
+                      final price = data['Price'] ?? 0;  // กำหนดค่า price จากข้อมูลใน Firebase
+
+                     
 
                       int totalStock = 0;
+if (data["variants"] is List) {
+  for (var v in data["variants"]) {
+    totalStock += (v["stock"] ?? 0) as int;
+  }
+}
+
                       if (data["variants"] is List) {
                         for (var v in data["variants"]) {
                           totalStock += (v["stock"] ?? 0) as int;

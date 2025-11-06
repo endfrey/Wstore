@@ -167,20 +167,7 @@ class _LogInState extends State<LogIn> {
 
                     const SizedBox(height: 12),
 
-                    // ลิงก์ forgot password
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: const [
-                        Text(
-                          "Forgot Password?",
-                          style: TextStyle(
-                            color: Color(0xFF0097A7),
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
+                    
 
                     const SizedBox(height: 30),
 
